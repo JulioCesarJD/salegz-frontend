@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Tag, ToggleLeft, ToggleRight } from 'lucide-react';
-import { useCategorias, useToggleEstadoCategoria } from '../hooks/useCategorias';
+import { Plus, Edit2, Trash2, Tag, ToggleLeft, ToggleRight } from 'lucide-react';
+import { useCategorias, useToggleEstadoCategoria, useDeleteCategoria } from '../hooks/useCategorias';
+import { useAuthStore } from '../store/authStore';
 import { CategoriaModal } from '../components/features/categorias/CategoriaModal';
 
 export function CategoriasPage() {
   const [modal, setModal] = useState(null);
 
+  const { user } = useAuthStore();
+  const isAdmin = user?.tipoUsuario === 0;
+
   const { data: cats = [], isLoading } = useCategorias();
   const toggleMutation = useToggleEstadoCategoria();
+  const deleteMutation = useDeleteCategoria();
 
   return (
     <div className="space-y-5">
@@ -72,6 +77,22 @@ export function CategoriasPage() {
                         : <ToggleLeft  size={18} style={{ color:'var(--text-muted)' }}/>
                       }
                     </button>
+                    {isAdmin ? (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`¿Eliminar categoría '${c.descripcion}'? Esta acción no se puede deshacer.`)) {
+                            deleteMutation.mutate(c.categoriaId);
+                          }
+                        }}
+                        className="btn-ghost btn-icon btn-sm"
+                        title="Eliminar"
+                        disabled={deleteMutation.isPending}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    ) : (
+                      <span className="text-xs text-gray-400" title="Solo admin puede eliminar">Admin only</span>
+                    )}
                   </div>
                 </td>
               </tr>

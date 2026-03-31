@@ -23,6 +23,7 @@ import { ReportesPage }       from './pages/ReportesPage'
 import { UsuariosPage }       from './pages/UsuariosPage'
 import { ConfiguracionPage }  from './pages/ConfiguracionPage'
 import { PerfilPage }         from './pages/PerfilPage'
+import { InventarioPage }     from './pages/InventarioPage'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } })
 
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="clientes"      element={<ClientesPage />} />
             <Route path="categorias"    element={<CategoriasPage />} />
             <Route path="productos"     element={<ProductosPage />} />
+            <Route path="inventario"    element={<InventarioPage />} />
             <Route path="facturas"      element={<FacturasPage />} />
             <Route path="cotizaciones"  element={<CotizacionesPage />} />
             <Route path="compras"       element={<ComprasPage />} />

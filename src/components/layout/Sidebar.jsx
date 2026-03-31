@@ -16,6 +16,7 @@ const NAV_TODOS = [
   { to: '/clientes',     label: 'Clientes',     icon: Users },
   { divider: true },
   { to: '/productos',    label: 'Productos',    icon: Package },
+  { to: '/inventario',   label: 'Inventario',   icon: ClipboardList },
   { to: '/categorias',   label: 'Categorías',   icon: Tag },
   { to: '/cuadres',      label: 'Cuadres',      icon: TrendingUp },
 ]

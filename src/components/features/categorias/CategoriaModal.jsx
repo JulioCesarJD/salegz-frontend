@@ -1,8 +1,9 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { useCreateCategoria, useUpdateCategoria } from '../../../hooks/useCategorias';
+import { useCategorias, useCreateCategoria, useUpdateCategoria } from '../../../hooks/useCategorias';
 
 export function CategoriaModal({ cat, onClose }) {
+  const { data: categorias = [] } = useCategorias();
   const { register, handleSubmit, formState: { errors } } = useForm({
     defaultValues: cat || {},
   });
@@ -34,7 +35,16 @@ export function CategoriaModal({ cat, onClose }) {
             <label className="label">Descripción *</label>
             <input className={`input ${errors.descripcion ? 'input-error' : ''}`}
               placeholder="Ej: Electrónica"
-              {...register('descripcion', { required: 'Requerido', maxLength: 100 })} />
+              {...register('descripcion', {
+                required: 'Requerido',
+                maxLength: 100,
+                validate: (value) => {
+                  const text = value?.trim().toLowerCase();
+                  if (!text) return 'Requerido';
+                  const exists = categorias.some((c) => c.descripcion?.trim().toLowerCase() === text && c.categoriaId !== cat?.categoriaId);
+                  return !exists || 'Ya existe una categoría con ese nombre';
+                },
+              })} />
             {errors.descripcion && <p className="text-red-500 text-xs mt-1">{errors.descripcion.message}</p>}
           </div>
           <div className="flex gap-3 pt-1">

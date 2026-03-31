@@ -35,6 +35,19 @@ export const useUpdateCategoria = (onSuccessCallback) => {
   });
 };
 
+export const useDeleteCategoria = (onSuccessCallback) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: categoriasService.deleteCategoria,
+    onSuccess: () => {
+      qc.invalidateQueries(['categorias']);
+      toast.success('Categoría eliminada');
+      if (onSuccessCallback) onSuccessCallback();
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al eliminar categoría'),
+  });
+};
+
 export const useToggleEstadoCategoria = () => {
   const qc = useQueryClient();
   return useMutation({

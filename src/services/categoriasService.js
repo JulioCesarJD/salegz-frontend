@@ -15,6 +15,11 @@ export const updateCategoria = async (data) => {
   return response.data;
 };
 
+export const deleteCategoria = async (id) => {
+  const response = await api.delete(`/api/categorias/${id}`);
+  return response.data;
+};
+
 export const toggleEstadoCategoria = async (id) => {
   const response = await api.patch(`/api/categorias/${id}/toggle-estado`);
   return response.data;
