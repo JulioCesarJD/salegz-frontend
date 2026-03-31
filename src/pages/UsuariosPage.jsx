@@ -52,7 +52,7 @@ function UsuarioModal({ usuario, onClose, onSave, busy }) {
             </div>
             <div>
               <label className="label">PIN</label>
-              <input type="number" className="input" placeholder="0000" {...register('pin')} />
+              <input type="password" inputMode="numeric" maxLength={4} className="input text-center" placeholder="0000" {...register('pin')} />
             </div>
           </div>
           <div className="flex gap-3 pt-1">

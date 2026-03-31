@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { useEffect } from 'react'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
+import { NumInput } from '../components/common/NumInput'
 
 export function ConfiguracionPage() {
   const qc = useQueryClient()
@@ -121,7 +122,7 @@ export function ConfiguracionPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">% ITBS</label>
-              <input type="number" step="0.01" className="input" {...regC('itbs')} />
+              <NumInput className="input" {...regC('itbs')} />
             </div>
             <div>
               <label className="label">Cálculo ITBS</label>
@@ -139,23 +140,23 @@ export function ConfiguracionPage() {
             </div>
             <div>
               <label className="label">Límite días de pago</label>
-              <input type="number" className="input" {...regC('limiteDiaPago')} />
+              <NumInput decimals={false} className="input" {...regC('limiteDiaPago')} />
             </div>
             <div>
               <label className="label">Límite NCF Fiscal</label>
-              <input type="number" className="input" {...regC('limiteConteoFiscal')} />
+              <NumInput decimals={false} className="input" {...regC('limiteConteoFiscal')} />
             </div>
             <div>
               <label className="label">Límite NCF Consumo</label>
-              <input type="number" className="input" {...regC('limiteConteoConsumo')} />
+              <NumInput decimals={false} className="input" {...regC('limiteConteoConsumo')} />
             </div>
             <div>
               <label className="label">Límite Régimen Especial</label>
-              <input type="number" className="input" {...regC('limiteConteoRegimenEspecial')} />
+              <NumInput decimals={false} className="input" {...regC('limiteConteoRegimenEspecial')} />
             </div>
             <div>
               <label className="label">Límite Gubernamental</label>
-              <input type="number" className="input" {...regC('limiteConteoGubernamental')} />
+              <NumInput decimals={false} className="input" {...regC('limiteConteoGubernamental')} />
             </div>
             <div className="col-span-2 grid grid-cols-2 gap-4">
               <div className="flex items-center gap-3 p-3 rounded-lg border" style={{ borderColor: 'var(--border)' }}>

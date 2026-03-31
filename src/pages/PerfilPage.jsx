@@ -60,7 +60,7 @@ function CambiarPinForm({ usuarioId, usuario }) {
     }))} className="space-y-4">
       <div>
         <label className="label">Nuevo PIN (4 dígitos)</label>
-        <input type="number" className="input w-32 text-center text-xl font-bold tracking-widest"
+        <input type="password" inputMode="numeric" className="input w-32 text-center text-xl font-bold tracking-widest"
           maxLength={4} placeholder="0000"
           {...register('pin', {
             required: 'Requerido',
@@ -122,7 +122,7 @@ function UsuarioModal({ usuario, onClose, onSave, busy }) {
             </div>
             <div>
               <label className="label">PIN</label>
-              <input type="number" className="input text-center" placeholder="0000" {...register('pin')} />
+              <input type="password" inputMode="numeric" maxLength={4} className="input text-center" placeholder="0000" {...register('pin')} />
             </div>
           </div>
           <div className="flex gap-3 pt-1">
