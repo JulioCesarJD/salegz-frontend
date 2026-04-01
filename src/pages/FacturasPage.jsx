@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Search, Eye, XCircle, DollarSign, FileText, Printer } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { isAdminUser } from '../utils/auth';
 import { useFacturas, useCancelarFactura } from '../hooks/useFacturas';
 import { ESTADO_FACTURA } from '../constants/facturacion';
 import { fmt } from '../utils/format';
@@ -14,7 +15,7 @@ import * as facturasService from '../services/facturasService';
 
 export function FacturasPage() {
   const { user } = useAuthStore();
-  const isAdmin = user?.tipoUsuario === 0;
+  const isAdmin = isAdminUser(user);
   const hoy = localDate();
 
   const [search, setSearch] = useState('');

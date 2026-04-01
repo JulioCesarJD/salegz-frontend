@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { Eye, EyeOff, Zap, Sun, Moon } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useThemeStore } from '../store/themeStore'
+import { isAdminUser } from '../utils/auth'
 import toast from 'react-hot-toast'
  
  
@@ -18,7 +19,7 @@ export function LoginPage() {
     const res = await login(correo, contrasena)
     if (res.ok) {
       const user = res.user
-      const isAdmin = user?.tipoUsuario === 0
+      const isAdmin = isAdminUser(user)
       toast.success(`¡Bienvenido ${user?.nombre || 'usuario'}!`)
       if (isAdmin) navigate('/dashboard')
       else navigate('/welcome')

@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { Plus, Edit2, Trash2, Tag, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useCategorias, useToggleEstadoCategoria, useDeleteCategoria } from '../hooks/useCategorias';
 import { useAuthStore } from '../store/authStore';
+import { isAdminUser } from '../utils/auth';
 import { CategoriaModal } from '../components/features/categorias/CategoriaModal';
 
 export function CategoriasPage() {
   const [modal, setModal] = useState(null);
 
   const { user } = useAuthStore();
-  const isAdmin = user?.tipoUsuario === 0;
+  const isAdmin = isAdminUser(user);
 
   const { data: cats = [], isLoading } = useCategorias();
   const toggleMutation = useToggleEstadoCategoria();

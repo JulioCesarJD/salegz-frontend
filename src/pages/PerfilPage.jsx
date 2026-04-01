@@ -5,6 +5,7 @@ import { User, Key, Hash, ShieldCheck, Plus, Edit2 } from 'lucide-react'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
+import { isAdminUser, isSuperAdmin } from '../utils/auth'
 
 // ── Cambiar contraseña ───────────────────────────────────────────
 function CambiarContrasenaForm({ usuarioId }) {
@@ -118,6 +119,7 @@ function UsuarioModal({ usuario, onClose, onSave, busy }) {
               <select className="input" {...register('tipoUsuario')}>
                 <option value={0}>Administrador</option>
                 <option value={1}>Normal</option>
+                <option value={3}>Superadmin</option>
               </select>
             </div>
             <div>
@@ -140,7 +142,8 @@ function UsuarioModal({ usuario, onClose, onSave, busy }) {
 // ── Página principal ─────────────────────────────────────────────
 export function PerfilPage() {
   const { user } = useAuthStore()
-  const isAdmin  = user?.tipoUsuario === 0
+  const isAdmin  = isAdminUser(user)
+  const isSuper  = isSuperAdmin(user)
   const [tab,    setTab]   = useState('perfil')
   const [modal,  setModal] = useState(null)
   const qc = useQueryClient()
@@ -220,8 +223,8 @@ export function PerfilPage() {
             <div>
               <h2 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>{user?.nombre}</h2>
               <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{usuarioActual?.correo}</p>
-              <span className={`badge mt-2 ${user?.tipoUsuario === 0 ? 'badge-green' : 'badge-gray'}`}>
-                {user?.tipoUsuario === 0 ? 'Administrador' : 'Usuario Normal'}
+              <span className={`badge mt-2 ${(user?.tipoUsuario === 0 || user?.tipoUsuario === 3) ? 'badge-green' : 'badge-gray'}`}>
+                {(user?.tipoUsuario === 0 || user?.tipoUsuario === 3) ? 'Administrador' : 'Usuario Normal'}
               </span>
             </div>
           </div>
@@ -230,7 +233,7 @@ export function PerfilPage() {
             {[
               ['ID de usuario', `#${user?.usuarioId}`],
               ['Correo', usuarioActual?.correo],
-              ['Tipo', user?.tipoUsuario === 0 ? 'Administrador' : 'Normal'],
+              ['Tipo', (user?.tipoUsuario === 0 || user?.tipoUsuario === 3) ? 'Administrador' : 'Normal'],
               ['Registro', usuarioActual?.fechaRegistro ? new Date(usuarioActual.fechaRegistro).toLocaleDateString('es-DO') : '—'],
             ].map(([l, v]) => (
               <div key={l} className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
@@ -325,8 +328,8 @@ export function PerfilPage() {
                     </td>
                     <td className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>{u.correo}</td>
                     <td>
-                      <span className={u.tipoUsuario === 0 ? 'badge badge-green' : 'badge badge-gray'}>
-                        {u.tipoUsuario === 0 ? 'Admin' : 'Normal'}
+                      <span className={u.tipoUsuario === 0 || u.tipoUsuario === 3 ? 'badge badge-green' : 'badge badge-gray'}>
+                        {u.tipoUsuario === 0 || u.tipoUsuario === 3 ? 'Admin' : 'Normal'}
                       </span>
                     </td>
                     <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>

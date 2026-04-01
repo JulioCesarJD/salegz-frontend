@@ -6,9 +6,10 @@ import {
   ClipboardList, UserCircle,
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
+import { isAdminUser } from '../../utils/auth'
 import clsx from 'clsx'
 
-// 0 = Admin, 1 = Normal
+// 0 = Admin, 1 = Normal, 3 = Superadmin
 const NAV_TODOS = [
   { to: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard },
   { to: '/facturas',     label: 'Facturas',     icon: FileText },
@@ -23,19 +24,20 @@ const NAV_TODOS = [
 
 const NAV_SOLO_ADMIN = [
   { divider: true },
-  { to: '/compras',       label: 'Compras',       icon: ShoppingCart },
-  { to: '/gastos',        label: 'Gastos',         icon: DollarSign },
+  { to: '/compras',       label: 'Compras',       icon: ShoppingCart, adminOnly: true },
+  { to: '/gastos',        label: 'Gastos',        icon: DollarSign,  adminOnly: true },
   { divider: true },
-  { to: '/reportes',      label: 'Reportes',       icon: TrendingUp },
-  { to: '/configuracion', label: 'Configuración',  icon: Settings },
+  { to: '/reportes',      label: 'Reportes',      icon: TrendingUp,  adminOnly: true },
+  { to: '/configuracion', label: 'Configuración', icon: Settings,   adminOnly: true },
+  { to: '/usuarios',      label: 'Usuarios',      icon: UserCircle,  adminOnly: true },
 ]
 
 export function Sidebar({ collapsed, onToggle }) {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
-  const isAdmin  = user?.tipoUsuario === 0
+  const isAdmin  = isAdminUser(user)
 
-  const navItems = isAdmin ? [...NAV_TODOS, ...NAV_SOLO_ADMIN] : NAV_TODOS
+  const navItems = [...NAV_TODOS, ...NAV_SOLO_ADMIN.filter(i => !i.adminOnly || isAdmin)]
 
   const handleLogout = () => { logout(); navigate('/login') }
 
@@ -92,7 +94,7 @@ export function Sidebar({ collapsed, onToggle }) {
       <div className="border-t p-2 flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
         {!collapsed ? (
           <div className="rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-            <NavLink to="/usuarios"
+            <NavLink to="/perfil"
               className={({ isActive }) => clsx(
                 'flex items-center gap-2 px-2 py-2 transition-colors hover:bg-[var(--bg-secondary)]',
                 isActive && 'bg-[var(--bg-secondary)]'
@@ -116,7 +118,7 @@ export function Sidebar({ collapsed, onToggle }) {
           </div>
         ) : (
           <div className="space-y-1">
-            <NavLink to="/usuarios" title="Mi perfil"
+            <NavLink to="/perfil" title="Mi perfil"
               className="w-full flex justify-center p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
               <div className="w-6 h-6 rounded-full bg-brand-600 flex items-center justify-center">
                 <span className="text-white text-xs font-bold">{user?.nombre?.charAt(0).toUpperCase()}</span>

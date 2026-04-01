@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
+import { isAdminUser, isSuperAdmin } from '../utils/auth'
 
 // ── Modal usuario ────────────────────────────────────────────────
 function UsuarioModal({ usuario, onClose, onSave, busy }) {
@@ -48,6 +49,7 @@ function UsuarioModal({ usuario, onClose, onSave, busy }) {
               <select className="input" {...register('tipoUsuario')}>
                 <option value={0}>Administrador</option>
                 <option value={1}>Normal</option>
+                <option value={3}>Superadmin</option>
               </select>
             </div>
             <div>
@@ -267,7 +269,8 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
 export function UsuariosPage() {
   const [modal, setModal] = useState(null)
   const { user } = useAuthStore()
-  const isAdmin  = user?.tipoUsuario === 0
+  const isAdmin  = isAdminUser(user)
+  const isSuper = isSuperAdmin(user)
   const qc = useQueryClient()
 
   const { data: usuarios = [], isLoading } = useQuery({
@@ -354,8 +357,8 @@ export function UsuariosPage() {
                       </td>
                       <td className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>{u.correo}</td>
                       <td>
-                        <span className={u.tipoUsuario === 0 ? 'badge badge-green' : 'badge badge-gray'}>
-                          {u.tipoUsuario === 0 ? 'Admin' : 'Normal'}
+                        <span className={u.tipoUsuario === 0 || u.tipoUsuario === 3 ? 'badge badge-green' : 'badge badge-gray'}>
+                          {u.tipoUsuario === 0 || u.tipoUsuario === 3 ? 'Admin' : 'Normal'}
                         </span>
                       </td>
                       <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -369,12 +372,12 @@ export function UsuariosPage() {
                                 className="btn-ghost btn-icon btn-sm" title="Editar">
                                 <Edit2 size={14}/>
                               </button>
-                              {u.tipoUsuario !== 0 && (
+                              {isSuper || u.tipoUsuario !== 0 ? (
                                 <button onClick={() => setModal({ tipo: 'permisos', usuario: u })}
                                   className="btn-ghost btn-icon btn-sm text-blue-500" title="Permisos">
                                   <Shield size={14}/>
                                 </button>
-                              )}
+                              ) : null}
                             </>
                           )}
                           <button onClick={() => setModal({ tipo: 'pass', usuario: u })}

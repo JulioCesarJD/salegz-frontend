@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 
 import { useThemeStore }      from './store/themeStore'
 import { useAuthStore }       from './store/authStore'
+import { isAdminUser }        from './utils/auth'
 import { ProtectedRoute }     from './components/ProtectedRoute'
 import { MainLayout }         from './components/layout/MainLayout'
 
@@ -29,18 +30,18 @@ const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 3
 
 function AdminRoute({ children }) {
   const { user } = useAuthStore()
-  const isAdmin = user?.tipoUsuario === 0
+  const isAdmin = isAdminUser(user)
   return isAdmin ? children : <Navigate to="/welcome" replace />
 }
 
 function NonAdminRoute({ children }) {
   const { user } = useAuthStore()
-  const isAdmin = user?.tipoUsuario === 0
+  const isAdmin = isAdminUser(user)
   return !isAdmin ? children : <Navigate to="/dashboard" replace />
 }
 function WelcomeRoute({ children }) {
   const { user } = useAuthStore()
-  const isAdmin = user?.tipoUsuario === 0
+  const isAdmin = isAdminUser(user)
   return isAdmin ? <Navigate to="/dashboard" replace /> : children
 }
 export default function App() {
@@ -63,12 +64,13 @@ export default function App() {
             <Route path="inventario"    element={<InventarioPage />} />
             <Route path="facturas"      element={<FacturasPage />} />
             <Route path="cotizaciones"  element={<CotizacionesPage />} />
-            <Route path="compras"       element={<ComprasPage />} />
-            <Route path="gastos"        element={<GastosPage />} />
+            <Route path="compras"       element={<AdminRoute><ComprasPage /></AdminRoute>} />
+            <Route path="gastos"        element={<AdminRoute><GastosPage /></AdminRoute>} />
             <Route path="cuadres"       element={<CuadresPage />} />
-            <Route path="reportes"      element={<ReportesPage />} />
-            <Route path="usuarios"      element={<UsuariosPage />} />
-            <Route path="configuracion" element={<ConfiguracionPage />} />
+            <Route path="reportes"      element={<AdminRoute><ReportesPage /></AdminRoute>} />
+            <Route path="usuarios"      element={<AdminRoute><UsuariosPage /></AdminRoute>} />
+            <Route path="configuracion" element={<AdminRoute><ConfiguracionPage /></AdminRoute>} />
+            <Route path="perfil"        element={<PerfilPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
