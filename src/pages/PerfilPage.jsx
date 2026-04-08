@@ -223,8 +223,8 @@ export function PerfilPage() {
             <div>
               <h2 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>{user?.nombre}</h2>
               <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{usuarioActual?.correo}</p>
-              <span className={`badge mt-2 ${(user?.tipoUsuario === 0 || user?.tipoUsuario === 3) ? 'badge-green' : 'badge-gray'}`}>
-                {(user?.tipoUsuario === 0 || user?.tipoUsuario === 3) ? 'Administrador' : 'Usuario Normal'}
+              <span className={`badge mt-2 ${isSuperAdmin(user) ? 'badge-purple' : isAdminUser(user) ? 'badge-green' : 'badge-gray'}`}>
+                {isSuperAdmin(user) ? 'Superadmin' : isAdminUser(user) ? 'Administrador' : 'Usuario Normal'}
               </span>
             </div>
           </div>
@@ -233,7 +233,7 @@ export function PerfilPage() {
             {[
               ['ID de usuario', `#${user?.usuarioId}`],
               ['Correo', usuarioActual?.correo],
-              ['Tipo', (user?.tipoUsuario === 0 || user?.tipoUsuario === 3) ? 'Administrador' : 'Normal'],
+              ['Tipo', isSuperAdmin(user) ? 'Superadmin' : isAdminUser(user) ? 'Administrador' : 'Normal'],
               ['Registro', usuarioActual?.fechaRegistro ? new Date(usuarioActual.fechaRegistro).toLocaleDateString('es-DO') : '—'],
             ].map(([l, v]) => (
               <div key={l} className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
@@ -328,8 +328,8 @@ export function PerfilPage() {
                     </td>
                     <td className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>{u.correo}</td>
                     <td>
-                      <span className={u.tipoUsuario === 0 || u.tipoUsuario === 3 ? 'badge badge-green' : 'badge badge-gray'}>
-                        {u.tipoUsuario === 0 || u.tipoUsuario === 3 ? 'Admin' : 'Normal'}
+                      <span className={isSuperAdmin(u) ? 'badge badge-purple' : isAdminUser(u) ? 'badge badge-green' : 'badge badge-gray'}>
+                        {isSuperAdmin(u) ? 'Superadmin' : isAdminUser(u) ? 'Admin' : 'Normal'}
                       </span>
                     </td>
                     <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>

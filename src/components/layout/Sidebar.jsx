@@ -6,7 +6,7 @@ import {
   ClipboardList, UserCircle,
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
-import { isAdminUser } from '../../utils/auth'
+import { isAdminUser, isSuperAdmin } from '../../utils/auth'
 import clsx from 'clsx'
 
 // 0 = Admin, 1 = Normal, 3 = Superadmin
@@ -105,7 +105,7 @@ export function Sidebar({ collapsed, onToggle }) {
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{user?.nombre}</p>
                 <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                  {isAdmin ? 'Administrador' : 'Usuario'}
+                  {isSuperAdmin(user) ? 'Superadmin' : isAdmin ? 'Administrador' : 'Usuario'}
                 </p>
               </div>
               <UserCircle size={14} style={{ color: 'var(--text-muted)' }} />

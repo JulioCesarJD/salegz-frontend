@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
-import { isAdminUser, isSuperAdmin } from '../utils/auth'
+import { isAdminUser, isSuperAdmin, canManageUser } from '../utils/auth'
 
 // ── Modal usuario ────────────────────────────────────────────────
 function UsuarioModal({ usuario, onClose, onSave, busy }) {
@@ -357,8 +357,8 @@ export function UsuariosPage() {
                       </td>
                       <td className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>{u.correo}</td>
                       <td>
-                        <span className={u.tipoUsuario === 0 || u.tipoUsuario === 3 ? 'badge badge-green' : 'badge badge-gray'}>
-                          {u.tipoUsuario === 0 || u.tipoUsuario === 3 ? 'Admin' : 'Normal'}
+                        <span className={isSuperAdmin(u) ? 'badge badge-purple' : isAdminUser(u) ? 'badge badge-green' : 'badge badge-gray'}>
+                          {isSuperAdmin(u) ? 'Superadmin' : isAdminUser(u) ? 'Admin' : 'Normal'}
                         </span>
                       </td>
                       <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -366,18 +366,16 @@ export function UsuariosPage() {
                       </td>
                       <td>
                         <div className="flex gap-1">
-                          {isAdmin && (
+                          {isAdmin && canManageUser(u, user) && (
                             <>
                               <button onClick={() => setModal({ tipo: 'editar', usuario: u })}
                                 className="btn-ghost btn-icon btn-sm" title="Editar">
                                 <Edit2 size={14}/>
                               </button>
-                              {isSuper || u.tipoUsuario !== 0 ? (
-                                <button onClick={() => setModal({ tipo: 'permisos', usuario: u })}
-                                  className="btn-ghost btn-icon btn-sm text-blue-500" title="Permisos">
-                                  <Shield size={14}/>
-                                </button>
-                              ) : null}
+                              <button onClick={() => setModal({ tipo: 'permisos', usuario: u })}
+                                className="btn-ghost btn-icon btn-sm text-blue-500" title="Permisos">
+                                <Shield size={14}/>
+                              </button>
                             </>
                           )}
                           <button onClick={() => setModal({ tipo: 'pass', usuario: u })}
