@@ -285,6 +285,7 @@ export function UsuariosPage() {
     queryFn:  () => api.get('/api/usuarios').then(r => r.data),
   })
 
+
   const create = useMutation({
     mutationFn: (d) => api.post('/api/usuarios', d),
     onSuccess:  () => { qc.invalidateQueries(['usuarios']); toast.success('Usuario creado'); setModal(null) },
@@ -317,7 +318,17 @@ export function UsuariosPage() {
   const handleSave = (d) => d.usuarioId ? update.mutate(d) : create.mutate(d)
 
   // Filtrar usuarios: Admins no ven SuperAdmins, SuperAdmins ven todos
-  const usuariosFiltrados = isSuper ? usuarios : usuarios.filter(u => !isSuperAdmin(u))
+  const usuariosFiltrados = usuarios.filter(u => {
+    // SuperAdmin (tipoUsuario === 3) solo visible para SuperAdmins
+    const tipoNum = Number(u.tipoUsuario)
+    const esUsuarioSuperAdmin = tipoNum === 3
+
+    // Si yo soy SuperAdmin, mostrar todos
+    if (isSuper) return true
+
+    // Si no soy SuperAdmin, excluir SuperAdmins
+    return !esUsuarioSuperAdmin
+  })
 
   return (
     <div className="space-y-5">
