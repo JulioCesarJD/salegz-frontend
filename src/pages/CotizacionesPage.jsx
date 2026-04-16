@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Search, Eye, ArrowRightCircle, ClipboardList } from 'lucide-react';
 import { useCotizaciones } from '../hooks/useCotizaciones';
+import { usePermiso } from '../hooks/usePermiso';
 import { fmt } from '../utils/format';
 import { NuevaCotizacionModal } from '../components/features/cotizaciones/NuevaCotizacionModal';
 import { CotizacionDetalle } from '../components/features/cotizaciones/CotizacionDetalle';
@@ -8,6 +9,23 @@ import { CotizacionDetalle } from '../components/features/cotizaciones/Cotizacio
 export function CotizacionesPage() {
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(null);
+  const { puedeVer: puedeVerCotizaciones, puedeAcceder: puedeCrear } = usePermiso()
+
+  // Si no puede ver cotizaciones, mostrar acceso denegado
+  if (!puedeVerCotizaciones('verCotizaciones')) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 style={{ color: 'var(--text-primary)' }} className="text-2xl font-bold mb-2">
+            Acceso Denegado
+          </h2>
+          <p style={{ color: 'var(--text-muted)' }}>
+            No tienes permisos para acceder a cotizaciones
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   const { data: cotizaciones = [], isLoading } = useCotizaciones();
 
@@ -25,9 +43,11 @@ export function CotizacionesPage() {
           <h1 className="page-title">Cotizaciones</h1>
           <p className="page-sub">{cotizaciones.length} cotizaciones</p>
         </div>
-        <button onClick={() => setModal('nueva')} className="btn-primary">
-          <Plus size={15} /> Nueva cotización
-        </button>
+        {puedeCrear(['crearCotizaciones']) && (
+          <button onClick={() => setModal('nueva')} className="btn-primary">
+            <Plus size={15} /> Nueva cotización
+          </button>
+        )}
       </div>
 
       {/* Stats */}

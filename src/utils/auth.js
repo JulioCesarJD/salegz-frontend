@@ -1,7 +1,7 @@
 export const USER_ROLES = {
   ADMIN: 0,
   NORMAL: 1,
-  SUPERADMIN: 3,
+  SUPERADMIN: 2,
 }
 
 const parseUserType = (user) => {

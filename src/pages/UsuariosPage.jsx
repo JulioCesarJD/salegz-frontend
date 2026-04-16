@@ -319,9 +319,9 @@ export function UsuariosPage() {
 
   // Filtrar usuarios: Admins no ven SuperAdmins, SuperAdmins ven todos
   const usuariosFiltrados = usuarios.filter(u => {
-    // SuperAdmin (tipoUsuario === 3) solo visible para SuperAdmins
+    // SuperAdmin (tipoUsuario === 2) solo visible para SuperAdmins
     const tipoNum = Number(u.tipoUsuario)
-    const esUsuarioSuperAdmin = tipoNum === 3
+    const esUsuarioSuperAdmin = tipoNum === 2
 
     // Si yo soy SuperAdmin, mostrar todos
     if (isSuper) return true
