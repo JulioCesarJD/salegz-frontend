@@ -1,12 +1,31 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Search, Edit2, Package, AlertTriangle } from 'lucide-react';
+import { usePermiso } from '../hooks/usePermiso';
 import api from '../lib/api';
 import { useProductos } from '../hooks/useProductos';
 import { fmt } from '../utils/format';
 import { ProductoModal } from '../components/features/productos/ProductoModal';
 
 export function ProductosPage() {
+  const { puedeVer } = usePermiso();
+
+  // Verificar acceso a Productos
+  if (!puedeVer('verProductos')) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 style={{ color: 'var(--text-primary)' }} className="text-2xl font-bold mb-2">
+            Acceso Denegado
+          </h2>
+          <p style={{ color: 'var(--text-muted)' }}>
+            No tienes permisos para acceder a productos
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const [search,  setSearch]  = useState('');
   const [catFilt, setCatFilt] = useState('');
   const [modal,   setModal]   = useState(null);

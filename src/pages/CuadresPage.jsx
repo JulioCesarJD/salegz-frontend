@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Eye, TrendingUp } from 'lucide-react';
+import { usePermiso } from '../hooks/usePermiso';
 import { useCuadres } from '../hooks/useCuadres';
 import { ESTADO_CUADRE } from '../constants/cuadres';
 import { fmt } from '../utils/format';
@@ -7,6 +8,24 @@ import { NuevoCuadreModal } from '../components/features/cuadres/NuevoCuadreModa
 import { CuadreDetalle } from '../components/features/cuadres/CuadreDetalle';
 
 export function CuadresPage() {
+  const { puedeVer, puedeAcceder } = usePermiso();
+
+  // Verificar acceso a Cuadres
+  if (!puedeVer('verCuadres')) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 style={{ color: 'var(--text-primary)' }} className="text-2xl font-bold mb-2">
+            Acceso Denegado
+          </h2>
+          <p style={{ color: 'var(--text-muted)' }}>
+            No tienes permisos para acceder a cuadres
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const [modal, setModal] = useState(null);
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
@@ -21,9 +40,11 @@ export function CuadresPage() {
           <h1 className="page-title">Cuadres de caja</h1>
           <p className="page-sub">{cuadres.length} cuadres registrados</p>
         </div>
-        <button onClick={() => setModal('nuevo')} className="btn-primary">
-          <Plus size={15} /> Nuevo cuadre
-        </button>
+        {puedeAcceder(['crearCuadres']) && (
+          <button onClick={() => setModal('nuevo')} className="btn-primary">
+            <Plus size={15} /> Nuevo cuadre
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

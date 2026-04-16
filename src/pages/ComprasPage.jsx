@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Search, Eye, XCircle, DollarSign, ShoppingCart } from 'lucide-react';
+import { usePermiso } from '../hooks/usePermiso';
 import { useCompras, useCancelarCompra } from '../hooks/useCompras';
 import { fmt } from '../utils/format';
 import { CompraDetalle } from '../components/features/compras/CompraDetalle';
@@ -14,6 +15,24 @@ const ESTADOS_COMPRA = {
 };
 
 export function ComprasPage() {
+  const { puedeVer, puedeAcceder } = usePermiso();
+
+  // Verificar acceso a Compras
+  if (!puedeVer('verCompras')) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 style={{ color: 'var(--text-primary)' }} className="text-2xl font-bold mb-2">
+            Acceso Denegado
+          </h2>
+          <p style={{ color: 'var(--text-muted)' }}>
+            No tienes permisos para acceder a compras
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const [search, setSearch] = useState('');
   const [estado, setEstado] = useState('');
   const [modal,  setModal]  = useState(null);
@@ -36,9 +55,11 @@ export function ComprasPage() {
           <h1 className="page-title">Compras</h1>
           <p className="page-sub">{compras.length} compras registradas</p>
         </div>
-        <button onClick={() => setModal('nueva')} className="btn-primary">
-          <Plus size={15} /> Nueva compra
-        </button>
+        {puedeAcceder(['crearCompras']) && (
+          <button onClick={() => setModal('nueva')} className="btn-primary">
+            <Plus size={15} /> Nueva compra
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

@@ -6,38 +6,50 @@ import {
   ClipboardList, UserCircle,
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
+import { usePermiso } from '../../hooks/usePermiso'
 import { isAdminUser, isSuperAdmin } from '../../utils/auth'
 import clsx from 'clsx'
 
-// 0 = Admin, 1 = Normal, 3 = Superadmin
+// 0 = Admin, 1 = Normal, 2 = Superadmin
 const NAV_TODOS = [
-  { to: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard },
-  { to: '/facturas',     label: 'Facturas',     icon: FileText },
-  { to: '/cotizaciones', label: 'Cotizaciones', icon: ClipboardList },
-  { to: '/clientes',     label: 'Clientes',     icon: Users },
+  { to: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard, permission: null },
+  { to: '/facturas',     label: 'Facturas',    icon: FileText,        permission: 'verFacturas' },
+  { to: '/cotizaciones', label: 'Cotizaciones', icon: ClipboardList,   permission: 'verCotizaciones' },
+  { to: '/clientes',     label: 'Clientes',    icon: Users,           permission: 'verClientes' },
   { divider: true },
-  { to: '/productos',    label: 'Productos',    icon: Package },
-  { to: '/inventario',   label: 'Inventario',   icon: ClipboardList },
-  { to: '/categorias',   label: 'Categorías',   icon: Tag },
-  { to: '/cuadres',      label: 'Cuadres',      icon: TrendingUp },
+  { to: '/productos',    label: 'Productos',   icon: Package,         permission: 'verProductos' },
+  { to: '/inventario',   label: 'Inventario',  icon: ClipboardList,   permission: null },
+  { to: '/categorias',   label: 'Categorías',  icon: Tag,             permission: null },
+  { to: '/cuadres',      label: 'Cuadres',     icon: TrendingUp,      permission: 'verCuadres' },
 ]
 
 const NAV_SOLO_ADMIN = [
   { divider: true },
-  { to: '/compras',       label: 'Compras',       icon: ShoppingCart, adminOnly: true },
-  { to: '/gastos',        label: 'Gastos',        icon: DollarSign,  adminOnly: true },
+  { to: '/compras',       label: 'Compras',       icon: ShoppingCart, permission: 'verCompras', adminOnly: true },
+  { to: '/gastos',        label: 'Gastos',        icon: DollarSign,   permission: 'verGastos', adminOnly: true },
   { divider: true },
-  { to: '/reportes',      label: 'Reportes',      icon: TrendingUp,  adminOnly: true },
-  { to: '/configuracion', label: 'Configuración', icon: Settings,   adminOnly: true },
-  { to: '/usuarios',      label: 'Usuarios',      icon: UserCircle,  adminOnly: true },
+  { to: '/reportes',      label: 'Reportes',      icon: TrendingUp,   permission: 'verReportes', adminOnly: true },
+  { to: '/configuracion', label: 'Configuración', icon: Settings,     permission: null, adminOnly: true },
+  { to: '/usuarios',      label: 'Usuarios',      icon: UserCircle,   permission: null, adminOnly: true },
 ]
 
 export function Sidebar({ collapsed, onToggle }) {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
   const isAdmin  = isAdminUser(user)
+  const { puedeVer } = usePermiso()
 
-  const navItems = [...NAV_TODOS, ...NAV_SOLO_ADMIN.filter(i => !i.adminOnly || isAdmin)]
+  // Filtrar items según permisos
+  const filtrarItems = (items) => {
+    return items.filter(item => {
+      if (item.divider) return true
+      if (item.adminOnly && !isAdmin) return false
+      if (item.permission && !puedeVer(item.permission)) return false
+      return true
+    })
+  }
+
+  const navItems = [...filtrarItems(NAV_TODOS), ...filtrarItems(NAV_SOLO_ADMIN)]
 
   const handleLogout = () => { logout(); navigate('/login') }
 

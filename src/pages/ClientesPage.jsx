@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Search, Edit2, Phone, Mail, CreditCard, ToggleLeft, ToggleRight, User } from 'lucide-react';
+import { usePermiso } from '../hooks/usePermiso';
 import { useClientes, useToggleEstadoCliente } from '../hooks/useClientes';
 import { fmt } from '../utils/format';
 import { ClienteModal } from '../components/features/clientes/ClienteModal';
@@ -7,6 +8,24 @@ import { ClienteModal } from '../components/features/clientes/ClienteModal';
 const TIPO = ['Regular', 'Crédito', 'Mayorista'];
 
 export function ClientesPage() {
+  const { puedeVer, puedeAcceder } = usePermiso();
+
+  // Verificar acceso a Clientes
+  if (!puedeVer('verClientes')) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 style={{ color: 'var(--text-primary)' }} className="text-2xl font-bold mb-2">
+            Acceso Denegado
+          </h2>
+          <p style={{ color: 'var(--text-muted)' }}>
+            No tienes permisos para acceder a clientes
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const [search, setSearch]   = useState('');
   const [filtro, setFiltro]   = useState('todos');
   const [modal, setModal]     = useState(null);
@@ -28,9 +47,11 @@ export function ClientesPage() {
           <h1 className="page-title">Clientes</h1>
           <p className="page-sub">{clientes.length} registrados</p>
         </div>
-        <button onClick={() => setModal({})} className="btn-primary">
-          <Plus size={15} /> Nuevo cliente
-        </button>
+        {puedeAcceder(['crearClientes']) && (
+          <button onClick={() => setModal({})} className="btn-primary">
+            <Plus size={15} /> Nuevo cliente
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-3 gap-3">

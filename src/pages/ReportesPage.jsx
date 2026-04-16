@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { DollarSign, TrendingUp, Package, AlertTriangle, FileText } from 'lucide-react'
+import { usePermiso } from '../hooks/usePermiso'
 import api from '../lib/api'
 
 const fmt = (v) => new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(v || 0)
@@ -21,6 +22,24 @@ function DateRange({ desde, hasta, onDesde, onHasta }) {
 }
 
 export function ReportesPage() {
+  const { puedeVer } = usePermiso();
+
+  // Verificar acceso a Reportes
+  if (!puedeVer('verReportes')) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 style={{ color: 'var(--text-primary)' }} className="text-2xl font-bold mb-2">
+            Acceso Denegado
+          </h2>
+          <p style={{ color: 'var(--text-muted)' }}>
+            No tienes permisos para acceder a reportes
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const today  = new Date()
   const [desde, setDesde] = useState(new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0])
   const [hasta, setHasta] = useState(today.toISOString().split('T')[0])

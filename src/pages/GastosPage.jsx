@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Search, Eye, DollarSign, Tag } from 'lucide-react';
+import { usePermiso } from '../hooks/usePermiso';
 import { useGastos } from '../hooks/useGastos';
 import { fmt } from '../utils/format';
 import { ConceptosModal } from '../components/features/gastos/ConceptosModal';
@@ -7,6 +8,24 @@ import { NuevoGastoModal } from '../components/features/gastos/NuevoGastoModal';
 import { GastoDetalle } from '../components/features/gastos/GastoDetalle';
 
 export function GastosPage() {
+  const { puedeVer, puedeAcceder } = usePermiso();
+
+  // Verificar acceso a Gastos
+  if (!puedeVer('verGastos')) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 style={{ color: 'var(--text-primary)' }} className="text-2xl font-bold mb-2">
+            Acceso Denegado
+          </h2>
+          <p style={{ color: 'var(--text-muted)' }}>
+            No tienes permisos para acceder a gastos
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const [search, setSearch] = useState('');
   const [modal,  setModal]  = useState(null);
 
@@ -30,9 +49,11 @@ export function GastosPage() {
           <button onClick={() => setModal('conceptos')} className="btn-secondary">
             <Tag size={15} /> Conceptos
           </button>
-          <button onClick={() => setModal('nuevo')} className="btn-primary">
-            <Plus size={15} /> Nuevo gasto
-          </button>
+          {puedeAcceder(['crearGastos']) && (
+            <button onClick={() => setModal('nuevo')} className="btn-primary">
+              <Plus size={15} /> Nuevo gasto
+            </button>
+          )}
         </div>
       </div>
 

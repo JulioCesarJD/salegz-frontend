@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Search, Eye, XCircle, DollarSign, FileText, Printer } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { usePermiso } from '../hooks/usePermiso';
 import { isAdminUser } from '../utils/auth';
 import { useFacturas, useCancelarFactura } from '../hooks/useFacturas';
 import { ESTADO_FACTURA } from '../constants/facturacion';
@@ -16,6 +17,23 @@ import * as facturasService from '../services/facturasService';
 export function FacturasPage() {
   const { user } = useAuthStore();
   const isAdmin = isAdminUser(user);
+  const { puedeVer, puedeAcceder } = usePermiso();
+
+  // Verificar acceso a Facturas
+  if (!puedeVer('verFacturas')) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 style={{ color: 'var(--text-primary)' }} className="text-2xl font-bold mb-2">
+            Acceso Denegado
+          </h2>
+          <p style={{ color: 'var(--text-muted)' }}>
+            No tienes permisos para acceder a facturas
+          </p>
+        </div>
+      </div>
+    )
+  }
   const hoy = localDate();
 
   const [search, setSearch] = useState('');
@@ -64,9 +82,11 @@ export function FacturasPage() {
           <h1 className="page-title">Facturas</h1>
           <p className="page-sub">{facturas.length} facturas</p>
         </div>
-        <button onClick={() => setModal('nueva')} className="btn-primary">
-          <Plus size={15}/> Nueva factura
-        </button>
+        {puedeAcceder(['crearFacturas']) && (
+          <button onClick={() => setModal('nueva')} className="btn-primary">
+            <Plus size={15}/> Nueva factura
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
