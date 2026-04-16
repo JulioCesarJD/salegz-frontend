@@ -31,5 +31,8 @@ export const useAuthStore = create((set) => ({
     localStorage.removeItem('sg_token')
     localStorage.removeItem('sg_user')
     set({ user: null, token: null, isAuthenticated: false })
+    // Resetear permisos al hacer logout
+    const { usePermisosStore } = require('./permisosStore')
+    usePermisosStore.getState().reset()
   },
 }))

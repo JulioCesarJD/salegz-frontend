@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 
 import { useThemeStore }      from './store/themeStore'
 import { useAuthStore }       from './store/authStore'
+import { usePermisosStore }   from './store/permisosStore'
 import { isAdminUser }        from './utils/auth'
 import { ProtectedRoute }     from './components/ProtectedRoute'
 import { MainLayout }         from './components/layout/MainLayout'
@@ -46,7 +47,17 @@ function WelcomeRoute({ children }) {
 }
 export default function App() {
   const { init } = useThemeStore()
+  const { user } = useAuthStore()
+  const { cargarPermisos } = usePermisosStore()
+
   useEffect(() => { init() }, [])
+
+  // Cargar permisos cuando el usuario se autentica
+  useEffect(() => {
+    if (user?.usuarioId) {
+      cargarPermisos(user.usuarioId, isAdminUser(user))
+    }
+  }, [user?.usuarioId])
 
   return (
     <QueryClientProvider client={qc}>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Edit2, Key, Users, Shield } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -162,12 +162,19 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
 
   // Sincronizar form cuando llegan los datos
   const [initialized, setInitialized] = useState(false)
-  if (permisos && !initialized) {
-    Object.entries(permisos).forEach(([k, v]) => {
-      if (k !== 'usuarioId') setValue(k, v)
-    })
-    setInitialized(true)
-  }
+
+  useEffect(() => {
+    setInitialized(false)
+  }, [usuario.usuarioId])
+
+  useEffect(() => {
+    if (permisos && !initialized) {
+      Object.entries(permisos).forEach(([k, v]) => {
+        if (k !== 'usuarioId') setValue(k, v)
+      })
+      setInitialized(true)
+    }
+  }, [permisos, initialized, setValue])
 
   const vals = watch()
 
@@ -298,8 +305,8 @@ export function UsuariosPage() {
 
   const guardarPermisos = useMutation({
     mutationFn: (d) => api.put(`/api/usuarios/${d.usuarioId}/permisos`, d),
-    onSuccess:  () => {
-      qc.invalidateQueries(['permisos'])
+    onSuccess:  (_, d) => {
+      qc.invalidateQueries({ queryKey: ['permisos', d.usuarioId] })
       toast.success('Permisos guardados')
       setModal(null)
     },
@@ -309,12 +316,15 @@ export function UsuariosPage() {
   const busy = create.isPending || update.isPending
   const handleSave = (d) => d.usuarioId ? update.mutate(d) : create.mutate(d)
 
+  // Filtrar usuarios: Admins no ven SuperAdmins, SuperAdmins ven todos
+  const usuariosFiltrados = isSuper ? usuarios : usuarios.filter(u => !isSuperAdmin(u))
+
   return (
     <div className="space-y-5">
       <div className="page-header">
         <div>
           <h1 className="page-title">Usuarios</h1>
-          <p className="page-sub">{usuarios.length} usuarios</p>
+          <p className="page-sub">{usuariosFiltrados.length} usuarios</p>
         </div>
         {isAdmin && (
           <button onClick={() => setModal({ tipo: 'nuevo' })} className="btn-primary">
@@ -338,12 +348,12 @@ export function UsuariosPage() {
           <tbody>
             {isLoading
               ? <tr><td colSpan={6} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>Cargando...</td></tr>
-              : usuarios.length === 0
+              : usuariosFiltrados.length === 0
                 ? <tr><td colSpan={6} className="text-center py-12">
                     <Users size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }}/>
                     <p style={{ color: 'var(--text-muted)' }}>No hay usuarios</p>
                   </td></tr>
-                : usuarios.map(u => (
+                : usuariosFiltrados.map(u => (
                     <tr key={u.usuarioId}>
                       <td className="font-bold text-sm" style={{ color: 'var(--brand)' }}>#{u.usuarioId}</td>
                       <td>

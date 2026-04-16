@@ -21,26 +21,41 @@ const DEFAULT_PERMISOS = {
   verReportes:       false,
 }
 
-export const usePermisosStore = create((set) => ({
-  permisos:  DEFAULT_PERMISOS,
-  loaded:    false,
+export const usePermisosStore = create((set, get) => ({
+  permisos:      DEFAULT_PERMISOS,
+  loaded:        false,
+  currentUserId: null,
 
   cargarPermisos: async (usuarioId, isAdmin) => {
+    const state = get()
+
+    // Si ya están cargados para este usuario, no cargar de nuevo
+    if (state.currentUserId === usuarioId && state.loaded) {
+      return
+    }
+
     // Admin tiene todos los permisos
     if (isAdmin) {
       const todoPermitido = Object.fromEntries(
         Object.keys(DEFAULT_PERMISOS).map(k => [k, true])
       )
-      set({ permisos: todoPermitido, loaded: true })
+      set({ permisos: todoPermitido, loaded: true, currentUserId: usuarioId })
       return
     }
+
     try {
       const res = await api.get(`/api/usuarios/${usuarioId}/permisos`)
-      set({ permisos: res.data, loaded: true })
-    } catch {
-      set({ permisos: DEFAULT_PERMISOS, loaded: true })
+      set({ permisos: res.data, loaded: true, currentUserId: usuarioId })
+    } catch (error) {
+      console.error('Error cargando permisos:', error)
+      set({ permisos: DEFAULT_PERMISOS, loaded: true, currentUserId: usuarioId })
     }
   },
 
-  reset: () => set({ permisos: DEFAULT_PERMISOS, loaded: false }),
+  // Verificar si un permiso específico está activo
+  tienePermiso: (permisoKey) => {
+    return get().permisos[permisoKey] === true
+  },
+
+  reset: () => set({ permisos: DEFAULT_PERMISOS, loaded: false, currentUserId: null }),
 }))
