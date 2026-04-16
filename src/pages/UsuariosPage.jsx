@@ -49,7 +49,7 @@ function UsuarioModal({ usuario, onClose, onSave, busy }) {
               <select className="input" {...register('tipoUsuario')}>
                 <option value={0}>Administrador</option>
                 <option value={1}>Normal</option>
-                <option value={3}>Superadmin</option>
+                <option value={2}>Superadmin</option>
               </select>
             </div>
             <div>
