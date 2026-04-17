@@ -175,11 +175,21 @@ export function PerfilPage() {
   const busy = create.isPending || update.isPending
   const handleSave = (d) => d.usuarioId ? update.mutate(d) : create.mutate(d)
 
+  const usuariosFiltrados = usuarios.filter(u => {
+  const tipo = Number(u.tipoUsuario)
+
+  // 👑 Si soy SuperAdmin → ve todo
+  if (isSuper) return true
+
+  // 👤 Si es Admin → NO ve SuperAdmin
+  return tipo !== 2
+})
+
   const TABS = [
     { key: 'perfil',   label: 'Mi perfil',   icon: User },
     { key: 'password', label: 'Contraseña',  icon: Key },
     { key: 'pin',      label: 'PIN',          icon: Hash },
-    ...(isAdmin ? [{ key: 'usuarios', label: 'Usuarios', icon: ShieldCheck }] : []),
+    // ...(isAdmin ? [{ key: 'usuarios', label: 'Usuarios', icon: ShieldCheck }] : []),
   ]
 
   return (
@@ -278,7 +288,7 @@ export function PerfilPage() {
       )}
 
       {/* Usuarios (solo admin) */}
-      {tab === 'usuarios' && isAdmin && (
+      {/* {tab === 'usuarios' && isAdmin && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -310,7 +320,7 @@ export function PerfilPage() {
               <tbody>
                 {isLoading ? (
                   <tr><td colSpan={6} className="text-center py-8" style={{ color: 'var(--text-muted)' }}>Cargando...</td></tr>
-                ) : usuarios.map(u => (
+                ): usuariosFiltrados.map(u => (
                   <tr key={u.usuarioId}>
                     <td className="font-bold text-sm" style={{ color: 'var(--brand)' }}>#{u.usuarioId}</td>
                     <td>
@@ -347,7 +357,7 @@ export function PerfilPage() {
             </table>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Modales */}
       {modal?.tipo === 'nuevo'  && <UsuarioModal usuario={null} onClose={() => setModal(null)} onSave={handleSave} busy={busy} />}

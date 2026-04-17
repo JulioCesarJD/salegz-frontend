@@ -1,14 +1,42 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Edit2, Key, Users, Shield } from 'lucide-react'
+import { Plus, Edit2, Key, Users, Shield, Trash2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
 import { isAdminUser, isSuperAdmin, canManageUser } from '../utils/auth'
 
+
+function ConfirmDeleteModal({ usuario, onClose, onConfirm, busy }) {
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box max-w-sm">
+        <h2 className="text-lg font-bold mb-2">Eliminar usuario</h2>
+        <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
+          ¿Seguro que quieres eliminar a <b>{usuario.nombre}</b>? Esta acción no se puede deshacer.
+        </p>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn-secondary flex-1">
+            Cancelar
+          </button>
+          <button
+            onClick={() => onConfirm(usuario.usuarioId)}
+            disabled={busy}
+            className="btn-danger flex-1"
+          >
+            {busy ? 'Eliminando...' : 'Eliminar'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
 // ── Modal usuario ────────────────────────────────────────────────
-function UsuarioModal({ usuario, onClose, onSave, busy }) {
+function UsuarioModal({ usuario, onClose, onSave, busy, currentUser }) {
   const isEdit = !!usuario?.usuarioId
   const { register, handleSubmit, formState: { errors } } = useForm({
     defaultValues: usuario || { tipoUsuario: 1, pin: 0 },
@@ -22,7 +50,22 @@ function UsuarioModal({ usuario, onClose, onSave, busy }) {
           </h2>
           <button onClick={onClose} className="btn-ghost btn-icon text-lg leading-none rounded-lg">×</button>
         </div>
-        <form onSubmit={handleSubmit(d => onSave({ ...d, empresaId: 1, tipoUsuario: parseInt(d.tipoUsuario), pin: parseInt(d.pin || 0) }))} className="space-y-4">
+        <form onSubmit={handleSubmit(d => {
+          const tipo = parseInt(d.tipoUsuario)
+
+          if (tipo === 2 && !isSuperAdmin(currentUser)) {
+            toast.error('No tienes permiso para crear SuperAdmin')
+            return
+          }
+
+          onSave({
+            ...d,
+            empresaId: 1,
+            tipoUsuario: tipo,
+            pin: parseInt(d.pin || 0),
+          })
+        })}
+          className="space-y-4">
           <div>
             <label className="label">Nombre *</label>
             <input className={`input ${errors.nombre ? 'input-error' : ''}`} placeholder="Juan Pérez"
@@ -49,7 +92,10 @@ function UsuarioModal({ usuario, onClose, onSave, busy }) {
               <select className="input" {...register('tipoUsuario')}>
                 <option value={0}>Administrador</option>
                 <option value={1}>Normal</option>
-                <option value={2}>Superadmin</option>
+
+                {isSuperAdmin(currentUser ?? {}) && (
+                  <option value={2}>Superadmin</option>
+                )}
               </select>
             </div>
             <div>
@@ -103,45 +149,45 @@ const GRUPOS_PERMISOS = [
   {
     grupo: 'Facturas',
     permisos: [
-      { key: 'verFacturas',      label: 'Ver facturas' },
-      { key: 'crearFacturas',    label: 'Crear facturas' },
+      { key: 'verFacturas', label: 'Ver facturas' },
+      { key: 'crearFacturas', label: 'Crear facturas' },
       { key: 'cancelarFacturas', label: 'Cancelar facturas' },
     ]
   },
   {
     grupo: 'Cotizaciones',
     permisos: [
-      { key: 'verCotizaciones',   label: 'Ver cotizaciones' },
+      { key: 'verCotizaciones', label: 'Ver cotizaciones' },
       { key: 'crearCotizaciones', label: 'Crear cotizaciones' },
     ]
   },
   {
     grupo: 'Compras',
     permisos: [
-      { key: 'verCompras',   label: 'Ver compras' },
+      { key: 'verCompras', label: 'Ver compras' },
       { key: 'crearCompras', label: 'Crear compras' },
     ]
   },
   {
     grupo: 'Gastos',
     permisos: [
-      { key: 'verGastos',   label: 'Ver gastos' },
+      { key: 'verGastos', label: 'Ver gastos' },
       { key: 'crearGastos', label: 'Crear gastos' },
     ]
   },
   {
     grupo: 'Cuadres',
     permisos: [
-      { key: 'verCuadres',   label: 'Ver cuadres' },
+      { key: 'verCuadres', label: 'Ver cuadres' },
       { key: 'crearCuadres', label: 'Crear cuadres' },
     ]
   },
   {
     grupo: 'Clientes & Productos',
     permisos: [
-      { key: 'verClientes',   label: 'Ver clientes' },
+      { key: 'verClientes', label: 'Ver clientes' },
       { key: 'crearClientes', label: 'Crear/editar clientes' },
-      { key: 'verProductos',  label: 'Ver productos' },
+      { key: 'verProductos', label: 'Ver productos' },
     ]
   },
   {
@@ -155,7 +201,7 @@ const GRUPOS_PERMISOS = [
 function PermisosModal({ usuario, onClose, onSave, busy }) {
   const { data: permisos, isLoading } = useQuery({
     queryKey: ['permisos', usuario.usuarioId],
-    queryFn:  () => api.get(`/api/usuarios/${usuario.usuarioId}/permisos`).then(r => r.data),
+    queryFn: () => api.get(`/api/usuarios/${usuario.usuarioId}/permisos`).then(r => r.data),
   })
 
   const { register, handleSubmit, watch, setValue } = useForm()
@@ -187,22 +233,22 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
 
   const submit = (data) => {
     onSave({
-      usuarioId:         usuario.usuarioId,
-      verFacturas:       !!data.verFacturas,
-      crearFacturas:     !!data.crearFacturas,
-      cancelarFacturas:  !!data.cancelarFacturas,
-      verCotizaciones:   !!data.verCotizaciones,
+      usuarioId: usuario.usuarioId,
+      verFacturas: !!data.verFacturas,
+      crearFacturas: !!data.crearFacturas,
+      cancelarFacturas: !!data.cancelarFacturas,
+      verCotizaciones: !!data.verCotizaciones,
       crearCotizaciones: !!data.crearCotizaciones,
-      verCompras:        !!data.verCompras,
-      crearCompras:      !!data.crearCompras,
-      verGastos:         !!data.verGastos,
-      crearGastos:       !!data.crearGastos,
-      verCuadres:        !!data.verCuadres,
-      crearCuadres:      !!data.crearCuadres,
-      verClientes:       !!data.verClientes,
-      crearClientes:     !!data.crearClientes,
-      verProductos:      !!data.verProductos,
-      verReportes:       !!data.verReportes,
+      verCompras: !!data.verCompras,
+      crearCompras: !!data.crearCompras,
+      verGastos: !!data.verGastos,
+      crearGastos: !!data.crearGastos,
+      verCuadres: !!data.verCuadres,
+      crearCuadres: !!data.crearCuadres,
+      verClientes: !!data.verClientes,
+      crearClientes: !!data.crearClientes,
+      verProductos: !!data.verProductos,
+      verReportes: !!data.verReportes,
     })
   }
 
@@ -225,7 +271,7 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
           <form onSubmit={handleSubmit(submit)}>
             <div className="space-y-4 my-5 max-h-[60vh] overflow-y-auto pr-1">
               {GRUPOS_PERMISOS.map(g => {
-                const keys  = g.permisos.map(p => p.key)
+                const keys = g.permisos.map(p => p.key)
                 const allOn = keys.every(k => vals[k])
                 return (
                   <div key={g.grupo} className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
@@ -276,37 +322,37 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
 export function UsuariosPage() {
   const [modal, setModal] = useState(null)
   const { user } = useAuthStore()
-  const isAdmin  = isAdminUser(user)
+  const isAdmin = isAdminUser(user)
   const isSuper = isSuperAdmin(user)
   const qc = useQueryClient()
 
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ['usuarios'],
-    queryFn:  () => api.get('/api/usuarios').then(r => r.data),
+    queryFn: () => api.get('/api/usuarios').then(r => r.data),
   })
 
 
   const create = useMutation({
     mutationFn: (d) => api.post('/api/usuarios', d),
-    onSuccess:  () => { qc.invalidateQueries(['usuarios']); toast.success('Usuario creado'); setModal(null) },
-    onError:    (e) => toast.error(e.response?.data?.message || 'Error'),
+    onSuccess: () => { qc.invalidateQueries(['usuarios']); toast.success('Usuario creado'); setModal(null) },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
   })
 
   const update = useMutation({
     mutationFn: (d) => api.put(`/api/usuarios/${d.usuarioId}`, d),
-    onSuccess:  () => { qc.invalidateQueries(['usuarios']); toast.success('Actualizado'); setModal(null) },
-    onError:    (e) => toast.error(e.response?.data?.message || 'Error'),
+    onSuccess: () => { qc.invalidateQueries(['usuarios']); toast.success('Actualizado'); setModal(null) },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
   })
 
   const cambiarPass = useMutation({
     mutationFn: (d) => api.patch(`/api/usuarios/${d.usuarioId}/cambiar-contrasena`, d),
-    onSuccess:  () => { toast.success('Contraseña actualizada'); setModal(null) },
-    onError:    (e) => toast.error(e.response?.data?.message || 'Error'),
+    onSuccess: () => { toast.success('Contraseña actualizada'); setModal(null) },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
   })
 
   const guardarPermisos = useMutation({
     mutationFn: (d) => api.put(`/api/usuarios/${d.usuarioId}/permisos`, d),
-    onSuccess:  (_, d) => {
+    onSuccess: (_, d) => {
       qc.invalidateQueries({ queryKey: ['permisos', d.usuarioId] })
       toast.success('Permisos guardados')
       setModal(null)
@@ -328,6 +374,16 @@ export function UsuariosPage() {
 
     // Si no soy SuperAdmin, excluir SuperAdmins
     return !esUsuarioSuperAdmin
+  })
+
+  const eliminar = useMutation({
+    mutationFn: (id) => api.delete(`/api/usuarios/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries(['usuarios'])
+      toast.success('Usuario eliminado')
+      setModal(null)
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
   })
 
   return (
@@ -361,61 +417,76 @@ export function UsuariosPage() {
               ? <tr><td colSpan={6} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>Cargando...</td></tr>
               : usuariosFiltrados.length === 0
                 ? <tr><td colSpan={6} className="text-center py-12">
-                    <Users size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }}/>
-                    <p style={{ color: 'var(--text-muted)' }}>No hay usuarios</p>
-                  </td></tr>
+                  <Users size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
+                  <p style={{ color: 'var(--text-muted)' }}>No hay usuarios</p>
+                </td></tr>
                 : usuariosFiltrados.map(u => (
-                    <tr key={u.usuarioId}>
-                      <td className="font-bold text-sm" style={{ color: 'var(--brand)' }}>#{u.usuarioId}</td>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-                            style={{ backgroundColor: 'var(--brand)' }}>
-                            <span className="text-white text-xs font-bold">{u.nombre.charAt(0).toUpperCase()}</span>
-                          </div>
-                          <span className="font-medium text-sm truncate">{u.nombre}</span>
+                  <tr key={u.usuarioId}>
+                    <td className="font-bold text-sm" style={{ color: 'var(--brand)' }}>#{u.usuarioId}</td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{ backgroundColor: 'var(--brand)' }}>
+                          <span className="text-white text-xs font-bold">{u.nombre.charAt(0).toUpperCase()}</span>
                         </div>
-                      </td>
-                      <td className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>{u.correo}</td>
-                      <td>
-                        <span className={isSuperAdmin(u) ? 'badge badge-purple' : isAdminUser(u) ? 'badge badge-green' : 'badge badge-gray'}>
-                          {isSuperAdmin(u) ? 'Superadmin' : isAdminUser(u) ? 'Admin' : 'Normal'}
-                        </span>
-                      </td>
-                      <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                        {new Date(u.fechaRegistro).toLocaleDateString('es-DO')}
-                      </td>
-                      <td>
-                        <div className="flex gap-1">
-                          {isAdmin && canManageUser(u, user) && (
-                            <>
-                              <button onClick={() => setModal({ tipo: 'editar', usuario: u })}
-                                className="btn-ghost btn-icon btn-sm" title="Editar">
-                                <Edit2 size={14}/>
-                              </button>
-                              <button onClick={() => setModal({ tipo: 'permisos', usuario: u })}
-                                className="btn-ghost btn-icon btn-sm text-blue-500" title="Permisos">
-                                <Shield size={14}/>
-                              </button>
-                            </>
-                          )}
-                          <button onClick={() => setModal({ tipo: 'pass', usuario: u })}
-                            className="btn-ghost btn-icon btn-sm" title="Cambiar contraseña">
-                            <Key size={14}/>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        <span className="font-medium text-sm truncate">{u.nombre}</span>
+                      </div>
+                    </td>
+                    <td className="text-sm truncate" style={{ color: 'var(--text-secondary)' }}>{u.correo}</td>
+                    <td>
+                      <span className={isSuperAdmin(u) ? 'badge badge-purple' : isAdminUser(u) ? 'badge badge-green' : 'badge badge-gray'}>
+                        {isSuperAdmin(u) ? 'Superadmin' : isAdminUser(u) ? 'Admin' : 'Normal'}
+                      </span>
+                    </td>
+                    <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {new Date(u.fechaRegistro).toLocaleDateString('es-DO')}
+                    </td>
+                    <td>
+                      <div className="flex gap-1">
+                        {isAdmin && canManageUser(u, user) && (
+                          <>
+                            <button onClick={() => setModal({ tipo: 'editar', usuario: u })}
+                              className="btn-ghost btn-icon btn-sm" title="Editar">
+                              <Edit2 size={14} />
+                            </button>
+                            <button onClick={() => setModal({ tipo: 'permisos', usuario: u })}
+                              className="btn-ghost btn-icon btn-sm text-blue-500" title="Permisos">
+                              <Shield size={14} />
+                            </button>
+                          </>
+                        )}
+                        <button onClick={() => setModal({ tipo: 'pass', usuario: u })}
+                          className="btn-ghost btn-icon btn-sm" title="Cambiar contraseña">
+                          <Key size={14} />
+                        </button>
+                        <button
+                          onClick={() => setModal({ tipo: 'eliminar', usuario: u })}
+                          className="btn-ghost btn-icon btn-sm text-red-500"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
             }
           </tbody>
         </table>
       </div>
 
-      {modal?.tipo === 'nuevo'    && <UsuarioModal usuario={null} onClose={() => setModal(null)} onSave={handleSave} busy={busy} />}
-      {modal?.tipo === 'editar'   && <UsuarioModal usuario={modal.usuario} onClose={() => setModal(null)} onSave={handleSave} busy={busy} />}
-      {modal?.tipo === 'pass'     && <CambiarContrasenaModal usuario={modal.usuario} onClose={() => setModal(null)} onSave={cambiarPass.mutate} busy={cambiarPass.isPending} />}
+      {modal?.tipo === 'nuevo' && <UsuarioModal usuario={null} currentUser={user} onClose={() => setModal(null)} onSave={handleSave} busy={busy} />}
+      {modal?.tipo === 'editar' && <UsuarioModal usuario={modal.usuario} currentUser={user} onClose={() => setModal(null)} onSave={handleSave} busy={busy} />}
+      {modal?.tipo === 'pass' && <CambiarContrasenaModal usuario={modal.usuario} onClose={() => setModal(null)} onSave={cambiarPass.mutate} busy={cambiarPass.isPending} />}
       {modal?.tipo === 'permisos' && <PermisosModal usuario={modal.usuario} onClose={() => setModal(null)} onSave={guardarPermisos.mutate} busy={guardarPermisos.isPending} />}
+      {modal?.tipo === 'eliminar' && (
+        <ConfirmDeleteModal
+          usuario={modal.usuario}
+          onClose={() => setModal(null)}
+          onConfirm={eliminar.mutate}
+          busy={eliminar.isPending}
+        />
+      )}
     </div>
   )
 }
