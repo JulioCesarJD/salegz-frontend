@@ -3,12 +3,13 @@ import {
   LayoutDashboard, FileText, Users, Package,
   Tag, ShoppingCart, DollarSign, TrendingUp,
   Settings, LogOut, Zap, ChevronLeft, ChevronRight,
-  ClipboardList, UserCircle,
+  ClipboardList, UserCircle, Menu, X,
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { usePermiso } from '../../hooks/usePermiso'
 import { isAdminUser, isSuperAdmin } from '../../utils/auth'
 import clsx from 'clsx'
+import { useEffect, useState } from 'react'
 
 // 0 = Admin, 1 = Normal, 2 = Superadmin
 const NAV_TODOS = [
@@ -33,11 +34,39 @@ const NAV_SOLO_ADMIN = [
   { to: '/usuarios',      label: 'Usuarios',      icon: UserCircle,   permission: null, adminOnly: true },
 ]
 
+// Hook para detectar si es móvil
+const useMediaQuery = (query) => {
+  const [matches, setMatches] = useState(false)
+
+  useEffect(() => {
+    const media = window.matchMedia(query)
+    if (media.matches !== matches) {
+      setMatches(media.matches)
+    }
+    const listener = (e) => setMatches(e.matches)
+    media.addEventListener('change', listener)
+    return () => media.removeEventListener('change', listener)
+  }, [matches, query])
+
+  return matches
+}
+
 export function Sidebar({ collapsed, onToggle }) {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
-  const isAdmin  = isAdminUser(user)
+  const isAdmin = isAdminUser(user)
   const { puedeVer } = usePermiso()
+  
+  // Detectar si es móvil (pantalla < 768px)
+  const isMobile = useMediaQuery('(max-width: 767px)')
+  
+  // Estado local para el menú móvil (abierto/cerrado)
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  // Cerrar menú móvil al hacer clic en un link
+  const handleMobileNav = () => {
+    setMobileOpen(false)
+  }
 
   // Filtrar items según permisos
   const filtrarItems = (items) => {
@@ -51,32 +80,38 @@ export function Sidebar({ collapsed, onToggle }) {
 
   const navItems = [...filtrarItems(NAV_TODOS), ...filtrarItems(NAV_SOLO_ADMIN)]
 
-  const handleLogout = () => { logout(); navigate('/login') }
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+    if (isMobile) setMobileOpen(false)
+  }
 
-  return (
-    <aside
-      className={clsx(
-        'flex flex-col h-screen sticky top-0 border-r transition-all duration-200 z-20 flex-shrink-0',
-        collapsed ? 'w-[60px]' : 'w-56'
-      )}
-      style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
-    >
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 px-3 h-14 border-b flex-shrink-0"
-        style={{ borderColor: 'var(--border)' }}>
+  // Contenido del sidebar (compartido entre móvil y desktop)
+  const SidebarContent = () => (
+    <>
+      {/* Logo - solo visible en desktop cuando no está colapsado, o siempre en móvil */}
+      <div 
+        className="flex items-center gap-2.5 px-3 h-14 border-b flex-shrink-0"
+        style={{ borderColor: 'var(--border)' }}
+      >
         <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center flex-shrink-0">
           <Zap size={15} className="text-white" />
         </div>
-        {!collapsed && (
+        {(!collapsed || isMobile) && (
           <span className="font-extrabold text-base tracking-tight" style={{ color: 'var(--text-primary)' }}>
             SaleGz
           </span>
         )}
-        <button onClick={onToggle}
-          className="ml-auto p-1 rounded hover:bg-[var(--bg-tertiary)] transition-colors"
-          style={{ color: 'var(--text-muted)' }}>
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
+        {/* Botón colapsar - solo visible en desktop */}
+        {!isMobile && onToggle && (
+          <button 
+            onClick={onToggle}
+            className="ml-auto p-1 rounded hover:bg-[var(--bg-tertiary)] transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -87,16 +122,20 @@ export function Sidebar({ collapsed, onToggle }) {
           )
           const Icon = item.icon
           return (
-            <NavLink key={item.to} to={item.to}
-              title={collapsed ? item.label : undefined}
+            <NavLink 
+              key={item.to} 
+              to={item.to}
+              onClick={isMobile ? handleMobileNav : undefined}
+              title={(!isMobile && collapsed) ? item.label : undefined}
               className={({ isActive }) => clsx(
                 'flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors',
-                collapsed && 'justify-center',
+                (!isMobile && collapsed) && 'justify-center',
                 isActive ? 'bg-brand-600 text-white' : 'hover:bg-[var(--bg-tertiary)]'
               )}
-              style={({ isActive }) => ({ color: isActive ? '#fff' : 'var(--text-secondary)' })}>
+              style={({ isActive }) => ({ color: isActive ? '#fff' : 'var(--text-secondary)' })}
+            >
               <Icon size={17} className="flex-shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
+              {((!isMobile && !collapsed) || isMobile) && <span className="truncate">{item.label}</span>}
             </NavLink>
           )
         })}
@@ -104,13 +143,16 @@ export function Sidebar({ collapsed, onToggle }) {
 
       {/* Usuario */}
       <div className="border-t p-2 flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
-        {!collapsed ? (
+        {((!isMobile && !collapsed) || isMobile) ? (
           <div className="rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-            <NavLink to="/perfil"
+            <NavLink 
+              to="/perfil"
+              onClick={isMobile ? handleMobileNav : undefined}
               className={({ isActive }) => clsx(
                 'flex items-center gap-2 px-2 py-2 transition-colors hover:bg-[var(--bg-secondary)]',
                 isActive && 'bg-[var(--bg-secondary)]'
-              )}>
+              )}
+            >
               <div className="w-7 h-7 rounded-full bg-brand-600 flex items-center justify-center flex-shrink-0">
                 <span className="text-white text-xs font-bold">{user?.nombre?.charAt(0).toUpperCase()}</span>
               </div>
@@ -122,13 +164,15 @@ export function Sidebar({ collapsed, onToggle }) {
               </div>
               <UserCircle size={14} style={{ color: 'var(--text-muted)' }} />
             </NavLink>
-            <button onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:text-red-500 transition-colors border-t"
-              style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-red-400 hover:text-red-500 transition-colors border-t"
+              style={{ borderColor: 'var(--border)' }}
+            >
               <LogOut size={13} /> Cerrar sesión
             </button>
           </div>
-        ) : (
+        ) : (!isMobile && collapsed) && (
           <div className="space-y-1">
             <NavLink to="/perfil" title="Mi perfil"
               className="w-full flex justify-center p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors">
@@ -137,13 +181,61 @@ export function Sidebar({ collapsed, onToggle }) {
               </div>
             </NavLink>
             <button onClick={handleLogout}
-              className="w-full flex justify-center p-2 rounded-lg hover:text-red-500 transition-colors"
+              className="w-full flex justify-center p-2 rounded-lg hover:bg-red-50 transition-colors"
               style={{ color: 'var(--text-muted)' }}>
               <LogOut size={17} />
             </button>
           </div>
         )}
       </div>
+    </>
+  )
+
+  // Vista para móvil: overlay + menú hamburguesa
+  if (isMobile) {
+    return (
+      <>
+        {/* Botón hamburguesa flotante */}
+        <button
+          onClick={() => setMobileOpen(!mobileOpen)}
+          className="fixed top-3 left-3 z-50 p-2 rounded-lg shadow-lg lg:hidden"
+          style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
+        >
+          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+
+        {/* Overlay oscuro */}
+        {mobileOpen && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden transition-opacity"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+
+        {/* Sidebar móvil desplegable */}
+        <aside
+          className={clsx(
+            'fixed top-0 left-0 h-full w-64 z-50 transition-transform duration-300 ease-in-out lg:hidden',
+            mobileOpen ? 'translate-x-0' : '-translate-x-full'
+          )}
+          style={{ backgroundColor: 'var(--bg-card)', borderRight: '1px solid var(--border)' }}
+        >
+          <SidebarContent />
+        </aside>
+      </>
+    )
+  }
+
+  // Vista para desktop: sidebar lateral colapsable
+  return (
+    <aside
+      className={clsx(
+        'flex flex-col h-screen sticky top-0 border-r transition-all duration-200 z-20 flex-shrink-0 hidden lg:flex',
+        collapsed ? 'w-[60px]' : 'w-56'
+      )}
+      style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
+    >
+      <SidebarContent />
     </aside>
   )
 }
