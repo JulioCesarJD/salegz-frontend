@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { FileText, Users, Package, Tag, TrendingUp, ClipboardList, Zap } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
+import { usePermiso } from '../hooks/usePermiso'
 import api from '../lib/api'
 
 const fmt = (v) => new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(v || 0)
@@ -10,17 +11,18 @@ const localDate = (d = new Date()) =>
   `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
 
 const ACCESOS = [
-  { to: '/facturas',     label: 'Facturas',     desc: 'Crear y gestionar facturas',  icon: FileText,      color: 'bg-green-50  dark:bg-green-900/20  text-green-600' },
-  { to: '/cotizaciones', label: 'Cotizaciones', desc: 'Generar cotizaciones',         icon: ClipboardList, color: 'bg-blue-50   dark:bg-blue-900/20   text-blue-600' },
-  { to: '/clientes',     label: 'Clientes',     desc: 'Ver y registrar clientes',     icon: Users,         color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600' },
-  { to: '/productos',    label: 'Productos',    desc: 'Consultar inventario',         icon: Package,       color: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600' },
-  { to: '/categorias',   label: 'Categorías',   desc: 'Administrar categorías',       icon: Tag,           color: 'bg-pink-50   dark:bg-pink-900/20   text-pink-600' },
-  { to: '/cuadres',      label: 'Cuadres',      desc: 'Registrar cuadres de caja',    icon: TrendingUp,    color: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600' },
+  { to: '/facturas',     label: 'Facturas',     desc: 'Crear y gestionar facturas',  icon: FileText,      color: 'bg-green-50  dark:bg-green-900/20  text-green-600', permission: 'verFacturas' },
+  { to: '/cotizaciones', label: 'Cotizaciones', desc: 'Generar cotizaciones',         icon: ClipboardList, color: 'bg-blue-50   dark:bg-blue-900/20   text-blue-600', permission: 'verCotizaciones' },
+  { to: '/clientes',     label: 'Clientes',     desc: 'Ver y registrar clientes',     icon: Users,         color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600', permission: 'verClientes' },
+  { to: '/productos',    label: 'Productos',    desc: 'Consultar inventario',         icon: Package,       color: 'bg-orange-50 dark:bg-orange-900/20 text-orange-600', permission: 'verProductos' },
+  { to: '/categorias',   label: 'Categorías',   desc: 'Administrar categorías',       icon: Tag,           color: 'bg-pink-50   dark:bg-pink-900/20   text-pink-600', permission: 'verCategorias' },
+  { to: '/cuadres',      label: 'Cuadres',      desc: 'Registrar cuadres de caja',    icon: TrendingUp,    color: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600', permission: 'verCuadres' },
 ]
 
 export function WelcomePage() {
   const { user }  = useAuthStore()
   const navigate  = useNavigate()
+  const { puedeVer } = usePermiso()
 
   // ── Fechas locales DENTRO del componente ──
   const today = new Date()
@@ -64,7 +66,7 @@ export function WelcomePage() {
           Acceso rápido
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {ACCESOS.map(a => {
+          {ACCESOS.filter(a => !a.permission || puedeVer(a.permission)).map(a => {
             const Icon = a.icon
             return (
               <button key={a.to} onClick={() => navigate(a.to)}

@@ -19,6 +19,9 @@ const DEFAULT_PERMISOS = {
   crearClientes:     true,
   verProductos:      true,
   verReportes:       false,
+  verDashboard:      true,
+  verInventario:     true,
+  verCategorias:     true,
 }
 
 export const usePermisosStore = create((set, get) => ({
@@ -45,7 +48,9 @@ export const usePermisosStore = create((set, get) => ({
 
     try {
       const res = await api.get(`/api/usuarios/${usuarioId}/permisos`)
-      set({ permisos: res.data, loaded: true, currentUserId: usuarioId })
+      // Ensure all defined modules are present in permisos by merging with defaults.
+      const mergedPermisos = { ...DEFAULT_PERMISOS, ...res.data }
+      set({ permisos: mergedPermisos, loaded: true, currentUserId: usuarioId })
     } catch (error) {
       console.error('Error cargando permisos:', error)
       set({ permisos: DEFAULT_PERMISOS, loaded: true, currentUserId: usuarioId })

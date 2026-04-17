@@ -7,7 +7,6 @@ import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
 import { isAdminUser, isSuperAdmin, canManageUser } from '../utils/auth'
 
-
 function ConfirmDeleteModal({ usuario, onClose, onConfirm, busy }) {
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -33,7 +32,6 @@ function ConfirmDeleteModal({ usuario, onClose, onConfirm, busy }) {
     </div>
   )
 }
-
 
 // ── Modal usuario ────────────────────────────────────────────────
 function UsuarioModal({ usuario, onClose, onSave, busy, currentUser }) {
@@ -92,7 +90,6 @@ function UsuarioModal({ usuario, onClose, onSave, busy, currentUser }) {
               <select className="input" {...register('tipoUsuario')}>
                 <option value={0}>Administrador</option>
                 <option value={1}>Normal</option>
-
                 {isSuperAdmin(currentUser ?? {}) && (
                   <option value={2}>Superadmin</option>
                 )}
@@ -151,35 +148,35 @@ const GRUPOS_PERMISOS = [
     permisos: [
       { key: 'verFacturas', label: 'Ver facturas' },
       { key: 'crearFacturas', label: 'Crear facturas' },
-      { key: 'cancelarFacturas', label: 'Cancelar facturas' },
+      { key: 'cancelarFacturas', label: 'Cancelar facturas' }
     ]
   },
   {
     grupo: 'Cotizaciones',
     permisos: [
       { key: 'verCotizaciones', label: 'Ver cotizaciones' },
-      { key: 'crearCotizaciones', label: 'Crear cotizaciones' },
+      { key: 'crearCotizaciones', label: 'Crear cotizaciones' }
     ]
   },
   {
     grupo: 'Compras',
     permisos: [
       { key: 'verCompras', label: 'Ver compras' },
-      { key: 'crearCompras', label: 'Crear compras' },
+      { key: 'crearCompras', label: 'Crear compras' }
     ]
   },
   {
     grupo: 'Gastos',
     permisos: [
       { key: 'verGastos', label: 'Ver gastos' },
-      { key: 'crearGastos', label: 'Crear gastos' },
+      { key: 'crearGastos', label: 'Crear gastos' }
     ]
   },
   {
     grupo: 'Cuadres',
     permisos: [
       { key: 'verCuadres', label: 'Ver cuadres' },
-      { key: 'crearCuadres', label: 'Crear cuadres' },
+      { key: 'crearCuadres', label: 'Crear cuadres' }
     ]
   },
   {
@@ -187,15 +184,24 @@ const GRUPOS_PERMISOS = [
     permisos: [
       { key: 'verClientes', label: 'Ver clientes' },
       { key: 'crearClientes', label: 'Crear/editar clientes' },
-      { key: 'verProductos', label: 'Ver productos' },
+      { key: 'verProductos', label: 'Ver productos' }
     ]
   },
   {
     grupo: 'Reportes',
     permisos: [
-      { key: 'verReportes', label: 'Ver reportes' },
+      { key: 'verReportes', label: 'Ver reportes' }
     ]
   },
+  {
+    grupo: 'Inventario',
+    permisos: [
+      { key: 'verInventario', label: 'Ver inventario' },
+      { key: 'crearInventario', label: 'Crear inventario' },
+      { key: 'editarInventario', label: 'Editar inventario' },
+      { key: 'eliminarInventario', label: 'Eliminar inventario' }
+    ]
+  }
 ]
 
 function PermisosModal({ usuario, onClose, onSave, busy }) {
@@ -206,7 +212,6 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
 
   const { register, handleSubmit, watch, setValue } = useForm()
 
-  // Sincronizar form cuando llegan los datos
   const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
@@ -224,7 +229,6 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
 
   const vals = watch()
 
-  // Toggle todo el grupo
   const toggleGrupo = (grupo) => {
     const keys = GRUPOS_PERMISOS.find(g => g.grupo === grupo)?.permisos.map(p => p.key) || []
     const allOn = keys.every(k => vals[k])
@@ -275,7 +279,6 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
                 const allOn = keys.every(k => vals[k])
                 return (
                   <div key={g.grupo} className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
-                    {/* Header del grupo */}
                     <button type="button" onClick={() => toggleGrupo(g.grupo)}
                       className="w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-[var(--bg-tertiary)]"
                       style={{ backgroundColor: 'var(--bg-secondary)' }}>
@@ -284,7 +287,6 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
                         {allOn ? 'Todo habilitado' : 'Personalizado'}
                       </span>
                     </button>
-                    {/* Permisos del grupo */}
                     <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                       {g.permisos.map(p => (
                         <label key={p.key}
@@ -331,7 +333,6 @@ export function UsuariosPage() {
     queryFn: () => api.get('/api/usuarios').then(r => r.data),
   })
 
-
   const create = useMutation({
     mutationFn: (d) => api.post('/api/usuarios', d),
     onSuccess: () => { qc.invalidateQueries(['usuarios']); toast.success('Usuario creado'); setModal(null) },
@@ -363,16 +364,10 @@ export function UsuariosPage() {
   const busy = create.isPending || update.isPending
   const handleSave = (d) => d.usuarioId ? update.mutate(d) : create.mutate(d)
 
-  // Filtrar usuarios: Admins no ven SuperAdmins, SuperAdmins ven todos
   const usuariosFiltrados = usuarios.filter(u => {
-    // SuperAdmin (tipoUsuario === 2) solo visible para SuperAdmins
     const tipoNum = Number(u.tipoUsuario)
     const esUsuarioSuperAdmin = tipoNum === 2
-
-    // Si yo soy SuperAdmin, mostrar todos
     if (isSuper) return true
-
-    // Si no soy SuperAdmin, excluir SuperAdmins
     return !esUsuarioSuperAdmin
   })
 

@@ -12,14 +12,14 @@ import clsx from 'clsx'
 
 // 0 = Admin, 1 = Normal, 2 = Superadmin
 const NAV_TODOS = [
-  { to: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard, permission: null },
+  { to: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard, permission: 'verDashboard' },
   { to: '/facturas',     label: 'Facturas',    icon: FileText,        permission: 'verFacturas' },
   { to: '/cotizaciones', label: 'Cotizaciones', icon: ClipboardList,   permission: 'verCotizaciones' },
   { to: '/clientes',     label: 'Clientes',    icon: Users,           permission: 'verClientes' },
   { divider: true },
   { to: '/productos',    label: 'Productos',   icon: Package,         permission: 'verProductos' },
-  { to: '/inventario',   label: 'Inventario',  icon: ClipboardList,   permission: null },
-  { to: '/categorias',   label: 'Categorías',  icon: Tag,             permission: null },
+  { to: '/inventario',   label: 'Inventario',  icon: ClipboardList,   permission: 'verInventario' },
+  { to: '/categorias',   label: 'Categorías',  icon: Tag,             permission: 'verCategorias' },
   { to: '/cuadres',      label: 'Cuadres',     icon: TrendingUp,      permission: 'verCuadres' },
 ]
 
