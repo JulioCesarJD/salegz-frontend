@@ -33,6 +33,26 @@ function ConfirmDeleteModal({ usuario, onClose, onConfirm, busy }) {
   )
 }
 
+const handleTogglePermiso = (key, grupo) => {
+  const nuevoValor = !vals[key]
+
+  setValue(key, nuevoValor)
+
+  // 🔹 Si activa "crear", también activa "ver"
+  if (key.startsWith('crear') && nuevoValor) {
+    const verKey = key.replace('crear', 'ver')
+    setValue(verKey, true)
+  }
+
+  // 🔹 Si desactiva "ver", apaga todo el grupo
+  if (key.startsWith('ver') && !nuevoValor) {
+    const permisosGrupo = GRUPOS_PERMISOS
+      .find(g => g.grupo === grupo)?.permisos || []
+
+    permisosGrupo.forEach(p => setValue(p.key, false))
+  }
+}
+
 // ── Modal usuario ────────────────────────────────────────────────
 function UsuarioModal({ usuario, onClose, onSave, busy, currentUser }) {
   const isEdit = !!usuario?.usuarioId
@@ -294,7 +314,8 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
                           <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{p.label}</span>
                           <div className="relative">
                             <input type="checkbox" className="sr-only" {...register(p.key)} />
-                            <div onClick={() => setValue(p.key, !vals[p.key])}
+                            {/* <div onClick={() => setValue(p.key, !vals[p.key])} */}
+                            <div onClick={() => handleTogglePermiso(p.key, g.grupo)}
                               className={`w-10 h-5 rounded-full transition-colors cursor-pointer ${vals[p.key] ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
                               <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${vals[p.key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
                             </div>

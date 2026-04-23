@@ -174,17 +174,7 @@ export function FacturasPage() {
       <div className="tbl-wrap overflow-x-auto">
         <table className="tbl min-w-[800px] sm:min-w-full">
           <thead>
-            <tr>
-              {/* <th className="w-12">#</th>
-              <th className="min-w-[120px]">Cliente</th>
-              <th className="w-28">Fecha</th>
-              <th className="w-32">Tipo pago</th>
-              <th className="text-right w-36">Total</th>
-              <th className="text-right w-36">Pagado</th>
-              <th className="text-right w-36">Pendiente</th>
-              <th className="w-28">Estado</th>
-              <th className="w-24">Acciones</th> */}
-
+            <tr> 
               <th className="w-1">#</th>
               <th className="w-38">Cliente</th>          {/* antes min-w-[120px] */}
               <th className="w-32">Fecha</th>            {/* antes w-28 */}
