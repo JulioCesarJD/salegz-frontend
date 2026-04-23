@@ -1,13 +1,15 @@
-import React from 'react';
-import { Printer } from 'lucide-react';
+import React, { useState }  from 'react';
+import { Printer, Pencil  } from 'lucide-react';
 import { useFactura, useEmpresaInfo } from '../../../hooks/useFacturas';
 import { ESTADO_FACTURA } from '../../../constants/facturacion';
 import { fmt } from '../../../utils/format';
 import { printFactura } from '../../../utils/printFactura';
-
+import { EditarFacturaModal } from './EditarFacturaModal'; 
 export function FacturaDetalle({ facturaId, onClose }) {
   const { data: f, isLoading: loadingF } = useFactura(facturaId);
   const { empresa, control, isLoading: loadingE } = useEmpresaInfo();
+  const [editando, setEditando] = useState(false);
+
 
   const handlePrint = () => {
     if (f && empresa && control) printFactura(f, empresa, control);
@@ -93,10 +95,23 @@ export function FacturaDetalle({ facturaId, onClose }) {
         </div>
         <div className="flex gap-3 mt-5">
           <button onClick={onClose} className="btn-secondary flex-1">Cerrar</button>
+          {f?.estado === 3 && (
+            <button onClick={() => setEditando(true)} className="btn-secondary flex-1">
+              <Pencil size={15} /> Editar
+            </button>
+          )}
           <button onClick={handlePrint} className="btn-primary flex-1">
             <Printer size={15} /> Imprimir
           </button>
         </div>
+
+        {editando && (
+          <EditarFacturaModal
+            factura={f}
+            onClose={() => setEditando(false)}
+            onSaveSuccess={() => { setEditando(false); onClose(); }}
+          />
+        )}
       </div>
     </div>
   );

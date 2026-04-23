@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as facturasService from '../services/facturasService';
-import * as commonService from '../services/commonService';
+import * as commonService from '../services/commonService'; 
 
 // --- Queries ---
 
@@ -83,3 +83,23 @@ export const useEmpresaInfo = () => {
   const ct = useQuery({ queryKey: ['controles'], queryFn: commonService.getControlesEmpresa });
   return { empresa: em.data, control: ct.data, isLoading: em.isLoading || ct.isLoading };
 };
+
+  
+
+// Y el hook, reemplázalo así para que use el namespace correcto:
+export const useActualizarFactura = (onSuccess) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ facturaId, data }) => facturasService.actualizarFactura(facturaId, data),
+    
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['facturas'] });
+      queryClient.invalidateQueries({ queryKey: ['factura'] }); // también refresca el detalle
+      toast.success('Factura actualizada');
+      onSuccess?.();
+    },
+    
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al actualizar factura'),
+  });
+};
+

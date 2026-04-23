@@ -30,3 +30,12 @@ export const cancelarFactura = async (facturaId) => {
   const res = await api.patch(`/api/facturas/${facturaId}/cancelar`);
   return res.data;
 };
+
+export const actualizarFactura = async (facturaId, data) => {
+  const res = await api.put(`/api/facturas/${facturaId}`, { 
+    facturaId,        // ← esto es lo que el controller compara con el {id} de la URL
+    tipoPago: data.tipoPago,
+    detalles: data.detalles,
+  });
+  return res.data;
+};
