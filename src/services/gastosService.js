@@ -30,3 +30,17 @@ export const searchConsumos = async (q) => {
   const response = await api.get(`/api/gastos/consumos/search?q=${q}`);
   return response.data;
 };
+
+
+export const updateConsumo = async (consumosGastosId, data) => {
+  const response = await api.put(`/api/gastos/consumos/${consumosGastosId}`, {
+    consumosGastosId,
+    ...data
+  });
+  return response.data;
+};
+
+export const updateGasto = async (gastosId, data) => {
+  const response = await api.put(`/api/gastos/${gastosId}`, { gastosId, ...data });
+  return response.data;
+};

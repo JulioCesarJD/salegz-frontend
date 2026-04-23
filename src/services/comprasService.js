@@ -25,3 +25,11 @@ export const cancelarCompra = async (compraId) => {
   const response = await api.patch(`/api/compras/${compraId}/cancelar`);
   return response.data;
 };
+
+export const updateCompra = async (compraId, data) => {
+  const response = await api.put(`/api/compras/${compraId}`, {
+    compraId,
+    ...data
+  });
+  return response.data;
+};

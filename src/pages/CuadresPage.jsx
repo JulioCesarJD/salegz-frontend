@@ -104,10 +104,10 @@ export function CuadresPage() {
                         <td className="font-bold text-sm" style={{ color: 'var(--brand)' }}>#{c.cuadreId}</td>
                         <td className="font-medium text-sm truncate">{c.usuario}</td>
                         <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>{new Date(c.fecha).toLocaleDateString('es-DO')}</td>
-                        <td className="text-right text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmt(c.fondoInicial)}</td>
-                        <td className="text-right text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmt(c.ventasSistema)}</td>
-                        <td className="text-right font-semibold text-sm tabular-nums">{fmt(c.total)}</td>
-                        <td className="text-right text-sm tabular-nums font-semibold" style={{ color: difColor }}>
+                        <td className="text-start text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmt(c.fondoInicial)}</td>
+                        <td className="text-start text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmt(c.ventasSistema)}</td>
+                        <td className="text-start font-semibold text-sm tabular-nums">{fmt(c.total)}</td>
+                        <td className="text-start text-sm tabular-nums font-semibold" style={{ color: difColor }}>
                           {dif === 0 ? '—' : `${dif > 0 ? '+' : ''}${fmt(Math.abs(dif))}`}
                         </td>
                         <td>{ESTADO_CUADRE[c.estadoCuadre ?? 0]}</td>

@@ -60,3 +60,31 @@ export const useCreateConsumo = (onSuccessCallback) => {
     onError: (e) => toast.error(e.response?.data?.message || 'Error al guardar concepto'),
   });
 };
+
+export const useActualizarConsumo = (onSuccessCallback) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ consumosGastosId, data }) => gastosService.updateConsumo(consumosGastosId, data),
+    onSuccess: () => {
+      qc.invalidateQueries(['consumos-gastos']);
+      qc.invalidateQueries(['consumos-search']);
+      toast.success('Concepto actualizado');
+      if (onSuccessCallback) onSuccessCallback();
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al actualizar concepto'),
+  });
+};
+
+export const useActualizarGasto = (onSuccessCallback) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ gastosId, data }) => gastosService.updateGasto(gastosId, data),
+    onSuccess: () => {
+      qc.invalidateQueries(['gastos']);
+      qc.invalidateQueries(['gasto']);
+      toast.success('Gasto actualizado');
+      if (onSuccessCallback) onSuccessCallback();
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al actualizar gasto'),
+  });
+};

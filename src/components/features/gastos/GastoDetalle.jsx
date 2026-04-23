@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Pencil } from 'lucide-react';
 import { useGasto } from '../../../hooks/useGastos';
 import { fmt } from '../../../utils/format';
+import { EditarGastoModal } from './EditarGastoModal';
 
 export function GastoDetalle({ gastoId, onClose }) {
   const { data: g, isLoading } = useGasto(gastoId);
+  const [editando, setEditando] = useState(false);
 
   if (isLoading) return (
     <div className="modal-overlay">
@@ -25,7 +28,7 @@ export function GastoDetalle({ gastoId, onClose }) {
           </div>
           <button onClick={onClose} className="btn-ghost btn-icon text-lg leading-none rounded-lg">×</button>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-3 mb-5">
           {[['Usuario', g?.usuario], ['Total', fmt(g?.total)]].map(([l, v]) => (
             <div key={l} className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
@@ -34,7 +37,7 @@ export function GastoDetalle({ gastoId, onClose }) {
             </div>
           ))}
         </div>
-        
+
         <div className="space-y-2 mb-5">
           {g?.detalles?.map((d, i) => (
             <div key={i} className="flex justify-between items-center p-3 rounded-lg"
@@ -44,14 +47,27 @@ export function GastoDetalle({ gastoId, onClose }) {
             </div>
           ))}
         </div>
-        
-        <div className="flex justify-between border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+
+        <div className="flex justify-between border-t pt-4 mb-5" style={{ borderColor: 'var(--border)' }}>
           <span className="font-bold" style={{ color: 'var(--text-primary)' }}>Total</span>
           <span className="text-xl font-extrabold tabular-nums" style={{ color: 'var(--text-primary)' }}>{fmt(g?.total)}</span>
         </div>
-        
-        <button onClick={onClose} className="btn-secondary w-full mt-5">Cerrar</button>
+
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn-secondary flex-1">Cerrar</button>
+          <button onClick={() => setEditando(true)} className="btn-secondary flex-1">
+            <Pencil size={14} /> Editar
+          </button>
+        </div>
       </div>
+
+      {editando && (
+        <EditarGastoModal
+          gasto={g}
+          onClose={() => setEditando(false)}
+          onSaveSuccess={() => { setEditando(false); onClose(); }}
+        />
+      )}
     </div>
   );
 }
