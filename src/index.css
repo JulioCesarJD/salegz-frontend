@@ -123,11 +123,17 @@
   .page-sub     { @apply text-sm mt-0.5; color: var(--text-muted); }
 
   /* Modal overlay */
-  .modal-overlay {
-    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
-    background-color: rgba(0,0,0,0.55);
-    backdrop-filter: blur(2px);
-  }
+  /* Modal overlay */
+.modal-overlay {
+  @apply fixed flex items-center justify-center p-4;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh; /* 👈 cubre todo el viewport incluyendo donde está el navbar */
+  z-index: 9999;  /* 👈 mayor que cualquier navbar/sidebar */
+  background-color: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px);
+}
   .modal-box {
     @apply w-full rounded-2xl border p-6 animate-slide-up max-h-[90vh] overflow-y-auto;
     background-color: var(--bg-card);

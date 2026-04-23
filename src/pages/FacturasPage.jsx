@@ -175,7 +175,7 @@ export function FacturasPage() {
         <table className="tbl min-w-[800px] sm:min-w-full">
           <thead>
             <tr>
-              <th className="w-12">#</th>
+              {/* <th className="w-12">#</th>
               <th className="min-w-[120px]">Cliente</th>
               <th className="w-28">Fecha</th>
               <th className="w-32">Tipo pago</th>
@@ -183,8 +183,18 @@ export function FacturasPage() {
               <th className="text-right w-36">Pagado</th>
               <th className="text-right w-36">Pendiente</th>
               <th className="w-28">Estado</th>
+              <th className="w-24">Acciones</th> */}
+
+              <th className="w-1">#</th>
+              <th className="w-38">Cliente</th>          {/* antes min-w-[120px] */}
+              <th className="w-32">Fecha</th>            {/* antes w-28 */}
+              <th className="w-36">Tipo pago</th>        {/* antes w-32 */}
+              <th className="text-right w-40">Total</th>      {/* antes w-36 */}
+              <th className="text-right w-40">Pagado</th>     {/* antes w-36 */}
+              <th className="text-right w-40">Pendiente</th>  {/* antes w-36 */}
+              <th className="w-32">Estado</th>           {/* antes w-28 */}
               <th className="w-24">Acciones</th>
-            </tr>
+</tr>
           </thead>
           <tbody>
             {isLoading ? (
@@ -195,12 +205,12 @@ export function FacturasPage() {
               list.map(f => (
                 <tr key={f.facturaId}>
                   <td className="font-bold text-sm" style={{ color: 'var(--brand)' }}>#{f.facturaId}</td>
-                  <td className="font-medium text-sm break-words max-w-[200px]">{f.nombreCliente}</td>
+                  <td className="font-medium text-sm break-words">{f.nombreCliente}</td>
                   <td className="text-sm whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{new Date(f.fecha).toLocaleDateString('es-DO')}</td>
                   <td><span className="badge badge-gray whitespace-nowrap">{f.tipoPago}</span></td>
-                  <td className="text-right"><span className="font-bold text-sm tabular-nums whitespace-nowrap">{fmt(f.total)}</span></td>
-                  <td className="text-right"><span className="font-semibold text-sm tabular-nums text-green-500 whitespace-nowrap">{fmt(f.pagado)}</span></td>
-                  <td className="text-right">
+                  <td className="text-start"><span className="font-bold text-sm tabular-nums whitespace-nowrap">{fmt(f.total)}</span></td>
+                  <td className="text-start"><span className="font-semibold text-sm tabular-nums text-green-500 whitespace-nowrap">{fmt(f.pagado)}</span></td>
+                  <td className="text-start">
                     { (f.total - f.pagado) > 0 ? <span className="font-semibold text-sm tabular-nums text-red-500 whitespace-nowrap">{fmt(f.total - f.pagado)}</span> : <span style={{ color: 'var(--text-muted)' }}>—</span> }
                   </td>
                   <td><span className="whitespace-nowrap">{ESTADO_FACTURA[f.estado]}</span></td>

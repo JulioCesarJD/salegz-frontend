@@ -116,12 +116,12 @@ export function CotizacionesPage() {
                 <td className="text-sm whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
                   {new Date(c.fecha).toLocaleDateString('es-DO')}
                 </td>
-                <td className="text-right text-sm tabular-nums whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
+                <td className="text-start text-sm tabular-nums whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
                   {fmt(c.itbis)}
                 </td>
-                <td className="text-right font-semibold text-sm tabular-nums whitespace-nowrap">{fmt(c.total)}</td>
+                <td className="text-start font-semibold text-sm tabular-nums whitespace-nowrap">{fmt(c.total)}</td>
                 <td>
-                  <div className="flex gap-1 justify-end">
+                  <div className="flex gap-1 justify-start">
                     <button
                       onClick={() => setModal({ ver: c.cotizacionId })}
                       className="btn-ghost btn-icon btn-sm" 

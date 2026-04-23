@@ -19,3 +19,11 @@ export const convertirCotizacion = async (data) => {
   const response = await api.post(`/api/cotizaciones/${data.cotizacionId}/convertir`, data);
   return response.data;
 };
+
+export const updateCotizacion = async (cotizacionId, data) => {
+  const response = await api.put(`/api/cotizaciones/${cotizacionId}`, {
+    cotizacionId,
+    ...data
+  });
+  return response.data;
+};

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { ArrowRightCircle, Printer } from 'lucide-react';
+import { ArrowRightCircle, Printer, Pencil } from 'lucide-react';
 import { useCotizacion, useConvertirCotizacion } from '../../../hooks/useCotizaciones';
 import { useEmpresaInfo } from '../../../hooks/useFacturas';
 import { TIPO_COMPROBANTE, METODOS_PAGO } from '../../../constants/facturacion';
 import { fmt } from '../../../utils/format';
 import { printCotizacion } from '../../../utils/printFactura';
+import { EditarCotizacionModal } from './EditarCotizacionModal';
 
 export function CotizacionDetalle({ cotizacionId, onClose }) {
   const { data: c, isLoading } = useCotizacion(cotizacionId);
@@ -15,6 +16,8 @@ export function CotizacionDetalle({ cotizacionId, onClose }) {
   const [confirmConvertir, setConfirmConvertir] = useState(false);
   const [tipoPago, setTipoPago] = useState('Efectivo');
   const [tipoComprobante, setTipoComprobante] = useState(1);
+
+  const [editando, setEditando] = useState(false);
 
   const handlePrint = () => {
     if (c && empresa && control) printCotizacion(c, empresa, control);
@@ -101,13 +104,25 @@ export function CotizacionDetalle({ cotizacionId, onClose }) {
         {!confirmConvertir ? (
           <div className="flex gap-3">
             <button onClick={onClose} className="btn-secondary flex-1">Cerrar</button>
+            <button onClick={() => setEditando(true)} className="btn-secondary flex-1">
+              <Pencil size={15} /> Editar
+            </button>
+
             <button onClick={handlePrint} className="btn-ghost flex-1 border" style={{ borderColor: 'var(--border)' }}>
               <Printer size={15} /> Imprimir
             </button>
+            {editando && (
+              <EditarCotizacionModal
+                cotizacion={c}                              // el objeto completo con detalles
+                onClose={() => setEditando(false)}
+                onSaveSuccess={() => { setEditando(false); onClose(); }}
+              />
+            )}
             <button onClick={() => setConfirmConvertir(true)} className="btn-primary flex-1">
               <ArrowRightCircle size={15} /> Convertir
             </button>
           </div>
+          
         ) : (
           <div className="border rounded-xl p-4 space-y-3" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-tertiary)' }}>
             <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>

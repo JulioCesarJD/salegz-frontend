@@ -43,3 +43,23 @@ export const useConvertirCotizacion = (onSuccessCallback) => {
     onError: (e) => toast.error(e.response?.data?.message || 'Error al convertir'),
   });
 };
+
+
+export const useActualizarCotizacion = (onSuccessCallback) => {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ cotizacionId, data }) =>
+      cotizService.updateCotizacion(cotizacionId, data),
+
+    onSuccess: () => {
+      qc.invalidateQueries(['cotizaciones']);
+      qc.invalidateQueries(['cotizacion']);  
+      toast.success('Cotización actualizada');
+      if (onSuccessCallback) onSuccessCallback();
+    },
+
+    onError: (e) =>
+      toast.error(e.response?.data?.message || 'Error al actualizar'),
+  });
+};
