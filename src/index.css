@@ -119,7 +119,9 @@
 
   /* Page */
   .page-header  { @apply flex items-center justify-between mb-6; }
-  .page-title   { @apply text-2xl font-bold; color: var(--text-primary); }
+  .page-title   { @apply text-2xl font-bold; color: var(--brand); }
+
+ 
   .page-sub     { @apply text-sm mt-0.5; color: var(--text-muted); }
 
   /* Modal overlay */

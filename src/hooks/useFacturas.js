@@ -41,7 +41,7 @@ export const useSaldarFactura = (onSuccessCallback) => {
     mutationFn: facturasService.saldarFactura,
     onSuccess: () => {
       qc.invalidateQueries(['facturas']);
-      toast.success('¡Cobro registrado! 💰');
+      toast.success('¡Cobro realizado!');
       if (onSuccessCallback) onSuccessCallback();
     },
     onError: (e) => toast.error(e.response?.data?.message || 'Error'),

@@ -41,7 +41,7 @@ export function CotizacionesPage() {
       {/* Header responsivo */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Cotizaciones</h1>
+          <h1 className="page-title">Cotizaciones</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{cotizaciones.length} cotizaciones</p>
         </div>
         {puedeCrear(['crearCotizaciones']) && (

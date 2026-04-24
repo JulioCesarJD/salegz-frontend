@@ -6,14 +6,14 @@ import { useAuthStore } from '../store/authStore'
 const fmt = (v) => new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(v || 0)
 
 const localDate = (d = new Date()) =>
-  `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
 function StatCard({ title, value, sub, icon: Icon, color }) {
   const colors = {
-    green:  'bg-green-50  dark:bg-green-900/20  text-green-600  dark:text-green-400',
+    green: 'bg-green-50  dark:bg-green-900/20  text-green-600  dark:text-green-400',
     yellow: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400',
-    red:    'bg-red-50    dark:bg-red-900/20    text-red-600    dark:text-red-400',
-    blue:   'bg-blue-50   dark:bg-blue-900/20   text-blue-600   dark:text-blue-400',
+    red: 'bg-red-50    dark:bg-red-900/20    text-red-600    dark:text-red-400',
+    blue: 'bg-blue-50   dark:bg-blue-900/20   text-blue-600   dark:text-blue-400',
     indigo: 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400',
   }
   return (
@@ -34,21 +34,24 @@ export function DashboardPage() {
   const { user } = useAuthStore()
   // ── Fechas locales DENTRO del componente ──
   const today = new Date()
-  const hoy   = localDate(today)
+  const hoy = localDate(today)
   const desde = localDate(new Date(today.getFullYear(), today.getMonth(), 1))
 
-  const { data: ventasHoy }      = useQuery({
+  const hora = today.getHours()
+  const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches'
+
+  const { data: ventasHoy } = useQuery({
     queryKey: ['ventas-hoy', hoy],
-    queryFn:  () => api.get(`/api/reportes/ventas?desde=${hoy}&hasta=${hoy}`).then(r => r.data),
+    queryFn: () => api.get(`/api/reportes/ventas?desde=${hoy}&hasta=${hoy}`).then(r => r.data),
   })
-  const { data: ventasMes }      = useQuery({
+  const { data: ventasMes } = useQuery({
     queryKey: ['ventas-mes', desde, hoy],
-    queryFn:  () => api.get(`/api/reportes/ventas?desde=${desde}&hasta=${hoy}`).then(r => r.data),
+    queryFn: () => api.get(`/api/reportes/ventas?desde=${desde}&hasta=${hoy}`).then(r => r.data),
   })
-  const { data: cxc = [] }       = useQuery({ queryKey: ['cxc'],        queryFn: () => api.get('/api/reportes/cuentas-cobrar').then(r => r.data) })
+  const { data: cxc = [] } = useQuery({ queryKey: ['cxc'], queryFn: () => api.get('/api/reportes/cuentas-cobrar').then(r => r.data) })
   const { data: stockBajo = [] } = useQuery({ queryKey: ['stock-bajo'], queryFn: () => api.get('/api/productos/stock-bajo').then(r => r.data) })
-  const { data: clientes = [] }  = useQuery({ queryKey: ['clientes'],   queryFn: () => api.get('/api/clientes').then(r => r.data) })
-  const { data: inv }            = useQuery({ queryKey: ['inv-resumen'],queryFn: () => api.get('/api/reportes/inventario/resumen').then(r => r.data) })
+  const { data: clientes = [] } = useQuery({ queryKey: ['clientes'], queryFn: () => api.get('/api/clientes').then(r => r.data) })
+  const { data: inv } = useQuery({ queryKey: ['inv-resumen'], queryFn: () => api.get('/api/reportes/inventario/resumen').then(r => r.data) })
 
   const margen = inv?.valorTotalPrecio1 > 0
     ? (((inv.valorTotalPrecio1 - inv.valorTotalCosto) / inv.valorTotalPrecio1) * 100).toFixed(1)
@@ -57,40 +60,41 @@ export function DashboardPage() {
   return (
     <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
       {/* Header con gradiente y fondo responsivo */}
+      {/* Header saludo estilo Welcome */}
       <div
-        className="relative overflow-hidden rounded-xl sm:rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6"
-        style={{
-          background: "linear-gradient(135deg, #16a34a, #22c55e)",
-        }}
+        className="rounded-2xl p-4 sm:p-6 flex items-center justify-between overflow-hidden relative mb-4 sm:mb-6"
+        style={{ background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)' }}
       >
         <div
-          className="absolute inset-0 opacity-20"
+          className="absolute inset-0 opacity-10"
           style={{
             backgroundImage:
-              "radial-gradient(circle, white 1px, transparent 1px)",
-            backgroundSize: "25px 25px",
+              'radial-gradient(circle, rgba(255,255,255,0.4) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
           }}
         />
 
         <div className="relative z-10">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Dashboard</h1>
-              <p className="text-white/70 text-xs sm:text-sm mt-1 capitalize">
-                {today.toLocaleDateString("es-DO", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </p>
-            </div>
-            <div className="hidden sm:flex items-center gap-3">
-              <div className="bg-white/20 backdrop-blur-sm px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white text-xs sm:text-sm">
-                📊 Resumen general
-              </div>
-            </div>
-          </div>
+          <p className="text-white/70 text-xs sm:text-sm font-medium">
+            {saludo} 👋
+          </p>
+
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
+            {user?.nombre?.split(' ')[0] || 'Usuario'}
+          </h1>
+
+          <p className="text-white/60 text-xs sm:text-sm mt-1 capitalize">
+            {today.toLocaleDateString('es-DO', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+          </p>
+        </div>
+
+        <div className="relative z-10 w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+          <TrendingUp size={24} className="text-white" />
         </div>
       </div>
 
@@ -279,7 +283,7 @@ export function DashboardPage() {
               className="text-sm text-center py-6 sm:py-8"
               style={{ color: "var(--text-muted)" }}
             >
-              Sin pendientes 
+              Sin pendientes
             </p>
           ) : (
             <div className="space-y-2 overflow-x-auto">

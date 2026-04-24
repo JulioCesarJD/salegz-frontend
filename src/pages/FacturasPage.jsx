@@ -121,7 +121,7 @@ export function FacturasPage() {
     <div className="space-y-4 sm:space-y-5 px-4 sm:px-0">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Facturas</h1>
+          <h1 className="page-title">Facturas</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{facturas.length} facturas</p>
         </div>
         {puedeAcceder(['crearFacturas']) && (
