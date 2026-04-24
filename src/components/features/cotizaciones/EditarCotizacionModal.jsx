@@ -105,6 +105,7 @@ export function EditarCotizacionModal({ cotizacion, onClose, onSaveSuccess }) {
   actualizarMutation.mutate({
     cotizacionId: cotizacion.cotizacionId,
     data: {
+       nombreCliente: cotizacion.nombreCliente,
       itbis:    itbs,
       total,
       detalles: detalles.map(d => {
