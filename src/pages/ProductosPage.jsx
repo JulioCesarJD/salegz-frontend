@@ -6,6 +6,8 @@ import api from '../lib/api';
 import { useProductos } from '../hooks/useProductos';
 import { fmt } from '../utils/format';
 import { ProductoModal } from '../components/features/productos/ProductoModal';
+import { CategoriaModal } from '../components/features/categorias/CategoriaModal';
+
 
 export function ProductosPage() {
   const { puedeVer } = usePermiso();
@@ -46,6 +48,9 @@ export function ProductosPage() {
 
   const stockBajoCount = prods.filter(p => p.cantidad <= p.minimo).length;
 
+   const [catModal, setCatModal] = useState(false)
+
+
   return (
     <div className="space-y-5">
       <div className="page-header">
@@ -66,10 +71,20 @@ export function ProductosPage() {
           <input className="input pl-8 w-64" placeholder="Buscar descripción, referencia..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="input w-48" value={catFilt} onChange={e => setCatFilt(e.target.value)}>
-          <option value="">Todas las categorías</option>
-          {cats.map(c => <option key={c.categoriaId} value={c.categoriaId}>{c.descripcion}</option>)}
-        </select>
+        
+        <div className="flex items-center gap-1">
+          <select className="input w-48" value={catFilt} onChange={e => setCatFilt(e.target.value)}>
+            <option value="">Todas las categorías</option>
+            {cats.map(c => <option key={c.categoriaId} value={c.categoriaId}>{c.descripcion}</option>)}
+          </select>
+          <button
+            onClick={() => setCatModal(true)}
+            className="btn-ghost btn-icon"
+            title="Nueva categoría"
+          >Nueva categoría
+            <Plus size={15} />
+          </button>
+        </div>
       </div>
 
       <div className="tbl-wrap">
@@ -144,6 +159,14 @@ export function ProductosPage() {
           onClose={() => setModal(null)}
         />
       )}
+     
+      {catModal && (
+        <CategoriaModal
+          cat={null}
+          onClose={() => setCatModal(false)}
+        />
+      )}
+    
     </div>
   );
 }

@@ -1,38 +1,56 @@
 import api from '../lib/api';
 
-export const getMovimientosInventario = async ({ productoId, tipo, fechaInicio, fechaFin } = {}) => {
-  const params = [];
-  if (productoId !== undefined && productoId !== null && productoId !== '') params.push(`productoId=${productoId}`);
-  if (tipo !== undefined && tipo !== null && tipo !== '') params.push(`tipo=${tipo}`);
-  if (fechaInicio) params.push(`fechaInicio=${encodeURIComponent(fechaInicio)}`);
-  if (fechaFin) params.push(`fechaFin=${encodeURIComponent(fechaFin)}`);
-  const query = params.length ? `?${params.join('&')}` : '';
-  const response = await api.get(`/api/inventario/movimientos${query}`);
-  return response.data;
+// 🔹 Helper para construir query params limpio
+const buildQuery = (paramsObj = {}) => {
+  const params = new URLSearchParams();
+
+  Object.entries(paramsObj).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      params.append(key, value);
+    }
+  });
+
+  return params.toString() ? `?${params.toString()}` : '';
 };
 
+// 🔹 Obtener movimientos con filtros
+export const getMovimientosInventario = async (filters = {}) => {
+  const query = buildQuery(filters);
+  const { data } = await api.get(`/api/inventario/movimientos${query}`);
+  return data;
+};
+
+// 🔹 Obtener un movimiento por ID
 export const getMovimientoInventarioById = async (movimientoId) => {
-  const response = await api.get(`/api/inventario/movimientos/${movimientoId}`);
-  return response.data;
+  const { data } = await api.get(`/api/inventario/movimientos/${movimientoId}`);
+  return data;
 };
 
-export const getHistorialProducto = async (productoId, limit) => {
-  const query = limit ? `?limit=${limit}` : '';
-  const response = await api.get(`/api/inventario/producto/${productoId}/historial${query}`);
-  return response.data;
+// 🔹 Historial por producto
+export const getHistorialProducto = async (productoId, limit = 50) => {
+  const query = buildQuery({ limit });
+  const { data } = await api.get(`/api/inventario/producto/${productoId}/historial${query}`);
+  return data;
 };
 
-export const createMovimientoInventario = async (data) => {
-  const response = await api.post('/api/inventario/movimientos', data);
-  return response.data;
+// 🔹 Crear movimiento (EL BACKEND calcula stock)
+export const createMovimientoInventario = async (payload) => {
+  /*
+    payload esperado:
+    {
+      productoId,
+      tipo,        // 0 entrada, 1 salida, 2 ajuste
+      cantidad,
+      referencia?,
+      nota?
+    }
+  */
+  const { data } = await api.post('/api/inventario/movimientos', payload);
+  return data;
 };
 
-export const updateMovimientoInventario = async ({ movimientoId, data }) => {
-  const response = await api.put(`/api/inventario/movimientos/${movimientoId}`, data);
-  return response.data;
-};
-
+// ⚠️ OPCIONAL (solo si decides permitirlo en backend)
 export const deleteMovimientoInventario = async (movimientoId) => {
-  const response = await api.delete(`/api/inventario/movimientos/${movimientoId}`);
-  return response.data;
+  const { data } = await api.delete(`/api/inventario/movimientos/${movimientoId}`);
+  return data;
 };

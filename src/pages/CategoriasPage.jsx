@@ -4,9 +4,11 @@ import { useCategorias, useToggleEstadoCategoria, useDeleteCategoria } from '../
 import { useAuthStore } from '../store/authStore';
 import { isAdminUser } from '../utils/auth';
 import { CategoriaModal } from '../components/features/categorias/CategoriaModal';
+import { ConfirmDialog } from '../components/common/ConfirmDialog'; // Importa el nuevo componente
 
 export function CategoriasPage() {
   const [modal, setModal] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // Estado para la categoría a eliminar
 
   const { user } = useAuthStore();
   const isAdmin = isAdminUser(user);
@@ -14,6 +16,20 @@ export function CategoriasPage() {
   const { data: cats = [], isLoading } = useCategorias();
   const toggleMutation = useToggleEstadoCategoria();
   const deleteMutation = useDeleteCategoria();
+
+  const handleDeleteClick = (categoria) => {
+    setDeleteConfirm(categoria);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteConfirm) {
+      deleteMutation.mutate(deleteConfirm.categoriaId, {
+        onSuccess: () => {
+          setDeleteConfirm(null); // Cierra el modal al eliminar exitosamente
+        }
+      });
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -80,11 +96,7 @@ export function CategoriasPage() {
                     </button>
                     {isAdmin ? (
                       <button
-                        onClick={() => {
-                          if (window.confirm(`¿Eliminar categoría '${c.descripcion}'? Esta acción no se puede deshacer.`)) {
-                            deleteMutation.mutate(c.categoriaId);
-                          }
-                        }}
+                        onClick={() => handleDeleteClick(c)}
                         className="btn-ghost btn-icon btn-sm"
                         title="Eliminar"
                         disabled={deleteMutation.isPending}
@@ -102,6 +114,18 @@ export function CategoriasPage() {
         </table>
       </div>
 
+      {/* Modal de confirmación para eliminar */}
+      <ConfirmDialog
+        isOpen={deleteConfirm !== null}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={handleConfirmDelete}
+        title="Eliminar categoría"
+        message={`¿Eliminar categoría '${deleteConfirm?.descripcion || ''}'? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        cancelText="Cancelar"
+      />
+
+      {/* Modal de edición/creación */}
       {modal !== null && (
         <CategoriaModal
           cat={modal?.categoriaId ? modal : null}

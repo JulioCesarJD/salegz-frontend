@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Search, Trash2, Box, CalendarDays, ListChecks, History } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
-import { useMovimientosInventario, useCreateMovimientoInventario, useDeleteMovimientoInventario, useHistorialProductoInventario } from '../hooks/useInventario';
+import { useMovimientosInventario, useCreateMovimientoInventario, useHistorialProductoInventario } from '../hooks/useInventario';
 import { useSearchProductos } from '../hooks/useFacturas';
 import { fmt } from '../utils/format';
 
@@ -14,15 +14,22 @@ const TIPO_MOVIMIENTO = {
 export function InventarioPage() {
   const { user } = useAuthStore();
 
-  const [filtroProducto, setFiltroProducto] = useState('');
+  // ── Filtros de la tabla ──────────────────────────────────────────────────
+  const [filtroProductoTabla, setFiltroProductoTabla] = useState('');   // FIX: estado separado
   const [productoIdFilter, setProductoIdFilter] = useState('');
   const [tipoFilter, setTipoFilter] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+
+  // ── Modal nuevo movimiento ───────────────────────────────────────────────
   const [modal, setModal] = useState(false);
-  const [historialId, setHistorialId] = useState(null);
+  const [filtroProductoModal, setFiltroProductoModal] = useState('');   // FIX: estado separado
   const [form, setForm] = useState({ productoId: '', tipo: '', cantidad: '', nota: '' });
 
+  // ── Historial ────────────────────────────────────────────────────────────
+  const [historialId, setHistorialId] = useState(null);
+
+  // ── Queries ──────────────────────────────────────────────────────────────
   const { data: movimientos = [], isLoading } = useMovimientosInventario({
     productoId: productoIdFilter || null,
     tipo: tipoFilter !== '' ? tipoFilter : null,
@@ -30,56 +37,72 @@ export function InventarioPage() {
     fechaFin: fechaFin || null,
   });
 
-  const { data: productos = [] } = useSearchProductos(filtroProducto);
+  // FIX: cada búsqueda usa su propio estado
+  const { data: productosTabla = [] } = useSearchProductos(filtroProductoTabla);
+  const { data: productosModal = [] } = useSearchProductos(filtroProductoModal);
 
   const { data: historialMovimientos = [] } = useHistorialProductoInventario(historialId, 50);
 
   const createMovimiento = useCreateMovimientoInventario(() => {
     setModal(false);
     setForm({ productoId: '', tipo: '', cantidad: '', nota: '' });
+    setFiltroProductoModal('');
   });
 
-  const deleteMovimiento = useDeleteMovimientoInventario();
-
-  const productoNombre = useMemo(() => {
+  // ── Computed ─────────────────────────────────────────────────────────────
+  const productoNombreModal = useMemo(() => {
     if (!form.productoId) return '';
-    const p = productos.find((x) => String(x.productoId) === String(form.productoId));
+    const p = productosModal.find((x) => String(x.productoId) === String(form.productoId));
     return p ? p.descripcion : '';
-  }, [form.productoId, productos]);
+  }, [form.productoId, productosModal]);
 
-  const totalExistente = movimientos.reduce((s, m) => s + Number(m.cantidad || 0), 0);
+  const productoSeleccionado = useMemo(
+    () => productosModal.find((p) => String(p.productoId) === String(form.productoId)),
+    [productosModal, form.productoId],
+  );
+
+  const stockActual = useMemo(() => Number(productoSeleccionado?.cantidad || 0), [productoSeleccionado]);
+
   const totalEntradas = movimientos.filter((m) => Number(m.tipo) === 0).reduce((s, m) => s + Number(m.cantidad || 0), 0);
-  const totalSalidas = movimientos.filter((m) => Number(m.tipo) === 1).reduce((s, m) => s + Number(m.cantidad || 0), 0);
-  const totalAjustes = movimientos.filter((m) => Number(m.tipo) === 2).reduce((s, m) => s + Number(m.cantidad || 0), 0);
+  const totalSalidas  = movimientos.filter((m) => Number(m.tipo) === 1).reduce((s, m) => s + Number(m.cantidad || 0), 0);
+  const totalAjustes  = movimientos.filter((m) => Number(m.tipo) === 2).reduce((s, m) => s + Number(m.cantidad || 0), 0);
+  const totalExistente = movimientos.length > 0 ? movimientos[0].stockActual : 0;
 
+  // ── Handlers ─────────────────────────────────────────────────────────────
   const handleSubmit = (e) => {
     e.preventDefault();
+
     if (!form.productoId || form.tipo === '' || !form.cantidad) {
       alert('Selecciona producto, tipo y cantidad.');
       return;
     }
 
-    if (!user?.usuarioId) {
-      alert('Usuario no autenticado. Vuelve a iniciar sesión.');
+    if (Number(form.tipo) === 1 && Number(form.cantidad) > stockActual) {
+      alert(`Stock insuficiente. Disponible: ${stockActual}`);
       return;
     }
 
-    const payload = {
+    createMovimiento.mutate({
       productoId: parseInt(form.productoId, 10),
       tipo: parseInt(form.tipo, 10),
       cantidad: parseFloat(form.cantidad),
       referencia: '',
-      usuarioId: parseInt(user.usuarioId, 10),
       nota: form.nota || '',
-    };
-
-    createMovimiento.mutate(payload);
+    });
   };
 
-  const list = movimientos;
+  const limpiarFiltros = () => {
+    setProductoIdFilter('');
+    setTipoFilter('');
+    setFechaInicio('');
+    setFechaFin('');
+    setFiltroProductoTabla('');
+  };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-5">
+      {/* Header */}
       <div className="page-header">
         <div>
           <h1 className="page-title">Inventario</h1>
@@ -90,6 +113,7 @@ export function InventarioPage() {
         </button>
       </div>
 
+      {/* Cards resumen */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <div className="card flex items-center gap-3">
           <Box size={18} className="text-brand" />
@@ -98,7 +122,6 @@ export function InventarioPage() {
             <p className="text-xl font-bold">{movimientos.length}</p>
           </div>
         </div>
-
         <div className="card flex items-center gap-3">
           <ListChecks size={18} className="text-green-500" />
           <div>
@@ -106,7 +129,6 @@ export function InventarioPage() {
             <p className="text-xl font-bold">{fmt(totalEntradas)}</p>
           </div>
         </div>
-
         <div className="card flex items-center gap-3">
           <ListChecks size={18} className="text-red-500" />
           <div>
@@ -114,7 +136,6 @@ export function InventarioPage() {
             <p className="text-xl font-bold">{fmt(totalSalidas)}</p>
           </div>
         </div>
-
         <div className="card flex items-center gap-3">
           <ListChecks size={18} className="text-yellow-500" />
           <div>
@@ -122,7 +143,6 @@ export function InventarioPage() {
             <p className="text-xl font-bold">{fmt(totalAjustes)}</p>
           </div>
         </div>
-
         <div className="card flex items-center gap-3">
           <CalendarDays size={18} className="text-secondary" />
           <div>
@@ -132,20 +152,30 @@ export function InventarioPage() {
         </div>
       </div>
 
+      {/* Filtros */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <div>
           <label className="label">Producto</label>
-          <input className="input" placeholder="Buscar producto..." value={filtroProducto} onChange={(e) => setFiltroProducto(e.target.value)} />
-          {filtroProducto && productos.length > 0 && (
+          <input
+            className="input"
+            placeholder="Buscar producto..."
+            value={filtroProductoTabla}
+            onChange={(e) => {
+              setFiltroProductoTabla(e.target.value);
+              if (!e.target.value) setProductoIdFilter('');
+            }}
+          />
+          {/* FIX: usa productosTabla, no productosModal */}
+          {filtroProductoTabla && productosTabla.length > 0 && (
             <div className="card mt-1 p-2 max-h-40 overflow-y-auto" style={{ borderColor: 'var(--border)' }}>
-              {productos.map((p) => (
+              {productosTabla.map((p) => (
                 <button
                   key={p.productoId}
                   className="w-full text-left py-1 text-sm hover:bg-[var(--bg-tertiary)]"
                   type="button"
                   onClick={() => {
                     setProductoIdFilter(p.productoId);
-                    setFiltroProducto(`${p.descripcion}`);
+                    setFiltroProductoTabla(p.descripcion);
                   }}
                 >
                   {p.descripcion}
@@ -154,11 +184,10 @@ export function InventarioPage() {
               <button
                 type="button"
                 className="text-xs text-blue-600"
-                onClick={() => {
-                  setProductoIdFilter('');
-                  setFiltroProducto('');
-                }}
-              >Limpiar</button>
+                onClick={() => { setProductoIdFilter(''); setFiltroProductoTabla(''); }}
+              >
+                Limpiar
+              </button>
             </div>
           )}
         </div>
@@ -184,57 +213,75 @@ export function InventarioPage() {
         </div>
 
         <div className="flex items-end">
-          <button
-            className="btn-secondary w-full"
-            onClick={() => {
-              setProductoIdFilter('');
-              setTipoFilter('');
-              setFechaInicio('');
-              setFechaFin('');
-              setFiltroProducto('');
-            }}
-          >
+          <button className="btn-secondary w-full" onClick={limpiarFiltros}>
             Limpiar filtros
           </button>
         </div>
       </div>
 
+      {/* Tabla — FIX: un solo tbody, sin map duplicado */}
       <div className="tbl-wrap">
         <table className="tbl table-fixed w-full">
           <thead>
             <tr>
-              <th className="w-12">#</th>
+              <th>#</th>
               <th>Producto</th>
               <th>Tipo</th>
               <th>Fecha</th>
-              <th>Cantidad</th>
+              <th className="text-right">Cantidad</th>
+              <th className="text-right">Stk. Anterior</th>
+              <th className="text-right">Stk. Actual</th>
               <th>Nota</th>
-              <th className="w-28">Acciones</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={7} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>Cargando...</td></tr>
-            ) : list.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-12">
+                <td colSpan={9} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>
+                  Cargando...
+                </td>
+              </tr>
+            ) : movimientos.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="text-center py-12">
                   <Box size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
                   <p style={{ color: 'var(--text-muted)' }}>No hay movimientos</p>
                 </td>
               </tr>
-            ) : list.map((m) => {
-              const movimientoId = m.movimientoId || m.id;
-              const nombreProducto = m.productoDescripcion || m.producto?.descripcion || 'Sin producto';
-              return (
-                <tr key={movimientoId ?? `${m.productoId}-${m.fecha}`}>
-                  <td className="font-bold text-sm" style={{ color: 'var(--brand)' }}>#{movimientoId || '-'}</td>
-                  <td className="font-medium text-sm truncate">{nombreProducto}</td>
-                  <td><span className={`badge ${Number(m.tipo) === 0 ? 'badge-green' : Number(m.tipo) === 1 ? 'badge-red' : 'badge-yellow'}`}>{TIPO_MOVIMIENTO[m.tipo] || '—'}</span></td>
-                  <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>{m.fecha ? new Date(m.fecha).toLocaleDateString('es-DO') : '-'}</td>
-                  <td className="text-sm text-right font-semibold tabular-nums">{fmt(m.cantidad)}</td>
-                  <td className="text-sm truncate" style={{ maxWidth: '180px' }}>{m.nota || '—'}</td>
-                  <td>
-                    <div className="flex gap-1 justify-end">
+            ) : (
+              movimientos.map((m) => {
+                const movimientoId = m.movimientoId || m.id;
+                return (
+                  <tr key={movimientoId}>
+                    <td className="font-bold text-sm" style={{ color: 'var(--brand)' }}>
+                      #{movimientoId}
+                    </td>
+                    <td className="font-medium text-sm truncate">
+                      {m.productoDescripcion || 'Sin producto'}
+                    </td>
+                    <td>
+                      <span className={`badge ${
+                        Number(m.tipo) === 0 ? 'badge-green' :
+                        Number(m.tipo) === 1 ? 'badge-red' : 'badge-yellow'
+                      }`}>
+                        {TIPO_MOVIMIENTO[m.tipo] || '—'}
+                      </span>
+                    </td>
+                    <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                      {m.fecha ? new Date(m.fecha).toLocaleDateString('es-DO') : '-'}
+                    </td>
+                    <td className="text-start font-semibold tabular-nums">
+                      {fmt(m.cantidad)}
+                    </td>
+                    <td className="text-start text-xs tabular-nums">
+                      {fmt(m.stockAnterior)}
+                    </td>
+                    <td className="text-start font-bold tabular-nums">
+                      {fmt(m.stockActual)}
+                    </td>
+                    <td className="text-sm truncate">{m.nota || '—'}</td>
+                    <td>
                       <button
                         type="button"
                         onClick={() => setHistorialId(m.productoId)}
@@ -243,25 +290,16 @@ export function InventarioPage() {
                       >
                         <History size={14} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm('¿Eliminar movimiento?')) deleteMovimiento.mutate(movimientoId);
-                        }}
-                        className="btn-ghost btn-icon btn-sm text-red-500"
-                        title="Eliminar"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
 
+      {/* Modal nuevo movimiento */}
       {modal && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setModal(false)}>
           <div className="modal-box max-w-md">
@@ -273,25 +311,26 @@ export function InventarioPage() {
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <label className="label">Producto</label>
+                {/* FIX: usa filtroProductoModal y productosModal */}
                 <input
-                  value={form.productoId ? productoNombre : filtroProducto}
+                  value={form.productoId ? productoNombreModal : filtroProductoModal}
                   onChange={(e) => {
-                    setFiltroProducto(e.target.value);
+                    setFiltroProductoModal(e.target.value);
                     setForm({ ...form, productoId: '' });
                   }}
                   className="input"
                   placeholder="Buscar producto..."
                 />
-                {productos.length > 0 && filtroProducto && (
+                {productosModal.length > 0 && filtroProductoModal && !form.productoId && (
                   <div className="card mt-1 p-2 max-h-40 overflow-y-auto" style={{ borderColor: 'var(--border)' }}>
-                    {productos.map((p) => (
+                    {productosModal.map((p) => (
                       <button
                         key={p.productoId}
                         type="button"
                         className="w-full text-left py-1 text-sm hover:bg-[var(--bg-tertiary)]"
                         onClick={() => {
                           setForm({ ...form, productoId: p.productoId });
-                          setFiltroProducto(p.descripcion);
+                          setFiltroProductoModal(p.descripcion);
                         }}
                       >
                         {p.descripcion}
@@ -321,6 +360,9 @@ export function InventarioPage() {
                   value={form.cantidad}
                   onChange={(e) => setForm({ ...form, cantidad: e.target.value })}
                 />
+                <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                  Stock actual: <b>{fmt(stockActual)}</b>
+                </div>
               </div>
 
               <div>
@@ -333,7 +375,9 @@ export function InventarioPage() {
               </div>
 
               <div className="flex justify-end gap-2">
-                <button type="button" className="btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
+                <button type="button" className="btn-secondary" onClick={() => setModal(false)}>
+                  Cancelar
+                </button>
                 <button type="submit" className="btn-primary" disabled={createMovimiento.isLoading}>
                   {createMovimiento.isLoading ? 'Guardando...' : 'Guardar movimiento'}
                 </button>
@@ -343,6 +387,7 @@ export function InventarioPage() {
         </div>
       )}
 
+      {/* Modal historial */}
       {historialId && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setHistorialId(null)}>
           <div className="modal-box max-w-xl">
@@ -359,7 +404,7 @@ export function InventarioPage() {
                     <tr>
                       <th>Fecha</th>
                       <th>Tipo</th>
-                      <th>Cantidad</th>
+                      <th className="text-right">Cantidad</th>
                       <th>Nota</th>
                     </tr>
                   </thead>
