@@ -81,7 +81,7 @@ export function ProductosPage() {
             onClick={() => setCatModal(true)}
             className="btn-ghost btn-icon"
             title="Nueva categoría"
-          >Nueva categoría
+          >Nueva 1` z`
             <Plus size={15} />
           </button>
         </div>
