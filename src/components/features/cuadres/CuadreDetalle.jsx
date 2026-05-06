@@ -1,10 +1,29 @@
 import React from 'react';
 import { useCuadre } from '../../../hooks/useCuadres';
 import { ESTADO_CUADRE, DENOM } from '../../../constants/cuadres';
-import { fmt } from '../../../utils/format';
+import { fmt } from '../../../utils/format'; 
+import { printCuadre } from '../../../utils/print/printCuadre';
+import { Printer } from 'lucide-react';
+import * as commonService from '../../../services/commonService';  // <-- Añadir
+import * as cuadresService from '../../../services/cuadresService';
 
-export function CuadreDetalle({ cuadreId, onClose }) {
+
+export function CuadreDetalle({ cuadreId, onClose,onImprimir }) {
   const { data: c, isLoading } = useCuadre(cuadreId);
+
+  const handleImprimir = async (cuadreId) => {
+    try {
+      const [cuadre, empresa, control] = await Promise.all([
+        cuadresService.getCuadreById(cuadreId),
+        commonService.getEmpresa(),
+        commonService.getControlesEmpresa(),
+      ]);
+      printCuadre(cuadre, empresa, control);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
 
   if (isLoading) return (
     <div className="modal-overlay">
@@ -121,7 +140,14 @@ export function CuadreDetalle({ cuadreId, onClose }) {
           </div>
         )}
 
-        <button onClick={onClose} className="btn-secondary w-full">Cerrar</button>
+        <div className="flex gap-3 mt-5">
+          <button onClick={onClose} className="btn-secondary flex-1">Cerrar</button>
+          <button onClick={() => handleImprimir(c?.cuadreId)} className="btn-primary flex-1">
+            <Printer size={15} /> Imprimir
+          </button>
+
+        </div>
+        
       </div>
     </div>
   );

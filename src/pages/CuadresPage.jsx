@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Plus, Eye, TrendingUp } from 'lucide-react';
+import { Plus, Eye, TrendingUp, Printer } from 'lucide-react';
 import { usePermiso } from '../hooks/usePermiso';
 import { useCuadres } from '../hooks/useCuadres';
 import { ESTADO_CUADRE } from '../constants/cuadres';
 import { fmt } from '../utils/format';
 import { NuevoCuadreModal } from '../components/features/cuadres/NuevoCuadreModal';
 import { CuadreDetalle } from '../components/features/cuadres/CuadreDetalle';
+import * as commonService from '../services/commonService';
+import * as cuadresService from '../services/cuadresService';
+import { printCuadre } from '../utils/print/printCuadre';
 
 export function CuadresPage() {
   const { puedeVer, puedeAcceder } = usePermiso();
@@ -32,6 +35,19 @@ export function CuadresPage() {
 
   // Hook abstracto
   const { data: cuadres = [], isLoading } = useCuadres(desde, hasta);
+
+  const handleImprimir = async (cuadreId) => {
+    try {
+      const [cuadre, empresa, control] = await Promise.all([
+        cuadresService.getCuadreById(cuadreId),
+        commonService.getEmpresa(),
+        commonService.getControlesEmpresa(),
+      ]);
+      printCuadre(cuadre, empresa, control);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -85,7 +101,7 @@ export function CuadresPage() {
               <th className="w-28 text-right">Total</th>
               <th className="w-28 text-right">Diferencia</th>
               <th className="w-28">Estado</th>
-              <th className="w-14"></th>
+              <th className="w-14">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -112,8 +128,11 @@ export function CuadresPage() {
                         </td>
                         <td>{ESTADO_CUADRE[c.estadoCuadre ?? 0]}</td>
                         <td>
-                          <button onClick={() => setModal({ ver: c.cuadreId })} className="btn-ghost btn-icon btn-sm">
+                          <button onClick={() => setModal({ ver: c.cuadreId })} className="btn-ghost btn-icon btn-sm" title="Ver">
                             <Eye size={14} />
+                          </button>
+                          <button onClick={() => handleImprimir(c.cuadreId)} className="btn-ghost btn-icon btn-sm" title="Imprimir">
+                            <Printer size={14} />
                           </button>
                         </td>
                       </tr>
@@ -125,7 +144,7 @@ export function CuadresPage() {
       </div>
 
       {modal === 'nuevo' && <NuevoCuadreModal onClose={() => setModal(null)} />}
-      {modal?.ver && <CuadreDetalle cuadreId={modal.ver} onClose={() => setModal(null)} />}
+      {modal?.ver && <CuadreDetalle cuadreId={modal.ver} onClose={() => setModal(null)} onImprimir={handleImprimir} />}
     </div>
   )
 }
