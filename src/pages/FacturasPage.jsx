@@ -11,9 +11,13 @@ import { FacturaDetalle } from '../components/features/facturas/FacturaDetalle';
 import { CobroModal } from '../components/features/facturas/CobroModal';
 import { NuevaFacturaModal } from '../components/features/facturas/NuevaFacturaModal';
 import { AdminPinModal } from '../components/features/AdminModal/Adminpinmodal'; // ← nuevo
-import { printFactura } from '../utils/printFactura';
+ 
 import * as commonService from '../services/commonService';
 import * as facturasService from '../services/facturasService';
+// import { printFactura } from '../../../utils/print/printFactura'
+
+import { printFactura } from '../utils/print/printFactura'
+
 
 export function FacturasPage() {
   const { user } = useAuthStore();

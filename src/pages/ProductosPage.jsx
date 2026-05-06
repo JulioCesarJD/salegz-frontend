@@ -79,9 +79,9 @@ export function ProductosPage() {
           </select>
           <button
             onClick={() => setCatModal(true)}
-            className="btn-ghost btn-icon"
+            className="btn-ghost btn-icon hover:bg-green-300 "
             title="Nueva categoría"
-          >Nueva 1` z`
+          >Nueva categoría
             <Plus size={15} />
           </button>
         </div>

@@ -2,9 +2,11 @@ import React, { useState }  from 'react';
 import { Printer, Pencil  } from 'lucide-react';
 import { useFactura, useEmpresaInfo } from '../../../hooks/useFacturas';
 import { ESTADO_FACTURA } from '../../../constants/facturacion';
-import { fmt } from '../../../utils/format';
-import { printFactura } from '../../../utils/printFactura';
+import { fmt } from '../../../utils/format'; 
 import { EditarFacturaModal } from './EditarFacturaModal'; 
+import { printFactura } from '../../../utils/print/printFactura'
+
+
 export function FacturaDetalle({ facturaId, onClose }) {
   const { data: f, isLoading: loadingF } = useFactura(facturaId);
   const { empresa, control, isLoading: loadingE } = useEmpresaInfo();

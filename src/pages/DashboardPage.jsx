@@ -80,7 +80,7 @@ export function DashboardPage() {
           </p>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white mt-1">
-            {user?.nombre?.split(' ')[0] || 'Usuario'}
+            {user?.nombre || 'Usuario'}
           </h1>
 
           <p className="text-white/60 text-xs sm:text-sm mt-1 capitalize">

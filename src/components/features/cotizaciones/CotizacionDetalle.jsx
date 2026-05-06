@@ -4,8 +4,9 @@ import { useCotizacion, useConvertirCotizacion } from '../../../hooks/useCotizac
 import { useEmpresaInfo } from '../../../hooks/useFacturas';
 import { TIPO_COMPROBANTE, METODOS_PAGO } from '../../../constants/facturacion';
 import { fmt } from '../../../utils/format';
-import { printCotizacion } from '../../../utils/printFactura';
 import { EditarCotizacionModal } from './EditarCotizacionModal';
+// import { printCotizacion } from '../../../utils/print/printCotizacion'
+import { printCotizacion } from '../../../utils/print/printCotizacion'
 
 export function CotizacionDetalle({ cotizacionId, onClose }) {
   const { data: c, isLoading } = useCotizacion(cotizacionId);
