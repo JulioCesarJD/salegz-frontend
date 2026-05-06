@@ -1,9 +1,9 @@
-import React, { useState }  from 'react';
-import { Printer, Pencil  } from 'lucide-react';
+import React, { useState } from 'react';
+import { Printer, Pencil } from 'lucide-react';
 import { useFactura, useEmpresaInfo } from '../../../hooks/useFacturas';
 import { ESTADO_FACTURA } from '../../../constants/facturacion';
-import { fmt } from '../../../utils/format'; 
-import { EditarFacturaModal } from './EditarFacturaModal'; 
+import { fmt } from '../../../utils/format';
+import { EditarFacturaModal } from './EditarFacturaModal';
 import { printFactura } from '../../../utils/print/printFactura'
 
 
@@ -51,9 +51,21 @@ export function FacturaDetalle({ facturaId, onClose }) {
           ].map(([l, v]) => (
             <div key={l} className="p-3 rounded-lg" style={{ backgroundColor: "var(--bg-tertiary)" }}>
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>{l}</p>
-              <p className="font-semibold text-sm mt-0.5" style={{ color: "var(--text-primary)" }}>{v || "—"}</p>
+              <p className="font-semibold text-sm mt-0.5" style={{ color: "var(--text-primary)" }}>
+                {v || "—"}
+              </p>
             </div>
           ))}
+
+          {/* ✅ RNC del cliente */}
+          {f?.rncCliente && (
+            <div className="p-3 rounded-lg" style={{ backgroundColor: "var(--bg-tertiary)" }}>
+              <p className="text-xs" style={{ color: "var(--text-muted)" }}>RNC</p>
+              <p className="font-semibold text-sm mt-0.5" style={{ color: "var(--text-primary)" }}>
+                {f.rncCliente}
+              </p>
+            </div>
+          )}
         </div>
         <div className="tbl-wrap mb-4">
           <table className="tbl">

@@ -52,16 +52,16 @@ function buildTicketHTML(factura, empresa, logoBase64) {
     }
   </div>
 
-  ${empresa?.rnc       ? `<div class="center" style="font-size:9px;">RNC: ${empresa.rnc}</div>` : ''}
+  ${empresa?.rnc ? `<div class="center" style="font-size:9px;">RNC: ${empresa.rnc}</div>` : ''}
   ${empresa?.direccion ? `<div class="center" style="font-size:9px;">${empresa.direccion}</div>` : ''}
-  ${empresa?.telefono  ? `<div class="center" style="font-size:9px;">Tel: ${empresa.telefono}</div>` : ''}
+  ${empresa?.telefono ? `<div class="center" style="font-size:9px;">Tel: ${empresa.telefono}</div>` : ''}
 
   <div class="line-light"></div>
 
   <div style="font-size:10px;">
     <div class="info-row"><span class="bold">FACTURA #:</span> ${factura.facturaId}</div>
     <div class="info-row"><span class="bold">FECHA:</span>    ${fmtFecha(factura.fecha)}</div>
-    <div class="info-row"><span class="bold">CLIENTE:</span>  ${factura.nombreCliente}</div>
+    <${factura.rncCliente ? `<div class="info-row"><span class="bold">RNC/CÉDULA:</span> ${factura.rncCliente}</div>` : ''}
     <div class="info-row"><span class="bold">CAJERO:</span>   ${factura.usuario}</div>
     <div class="info-row"><span class="bold">PAGO:</span>     ${factura.tipoPago}</div>
     ${factura.numOrden ? `<div class="info-row"><span class="bold">ORDEN #:</span> ${factura.numOrden}</div>` : ''}
@@ -129,10 +129,10 @@ function buildPDFHTML(factura, empresa, logoBase64) {
       </tr>`
   }).join('')
 
-  const ESTADOS       = ['Cancelada', 'Activa', 'Saldada', 'Cuenta abierta']
-  const ESTADO_COLORES = ['#dc2626',  '#2563eb', '#10b981', '#f59e0b']
-  const estadoLabel  = ESTADOS[factura.estado]       || ''
-  const estadoColor  = ESTADO_COLORES[factura.estado] || '#64748b'
+  const ESTADOS = ['Cancelada', 'Activa', 'Saldada', 'Cuenta abierta']
+  const ESTADO_COLORES = ['#dc2626', '#2563eb', '#10b981', '#f59e0b']
+  const estadoLabel = ESTADOS[factura.estado] || ''
+  const estadoColor = ESTADO_COLORES[factura.estado] || '#64748b'
 
   return `<!DOCTYPE html>
 <html>
@@ -202,13 +202,13 @@ function buildPDFHTML(factura, empresa, logoBase64) {
   <div class="header">
     <div class="company">
       ${logoBase64
-        ? `<img src="${logoBase64}" alt="Logo" class="logo-img">`
-        : `<div class="fallback-name">${empresa?.nombre || 'Mi Empresa'}</div>`
-      }
+      ? `<img src="${logoBase64}" alt="Logo" class="logo-img">`
+      : `<div class="fallback-name">${empresa?.nombre || 'Mi Empresa'}</div>`
+    }
       <div class="company-details">
-        ${empresa?.rnc       ? `RNC: ${empresa.rnc}<br>` : ''}
+        ${empresa?.rnc ? `RNC: ${empresa.rnc}<br>` : ''}
         ${empresa?.direccion ? `${empresa.direccion}<br>` : ''}
-        ${empresa?.telefono  ? `Tel: ${empresa.telefono}` : ''}
+        ${empresa?.telefono ? `Tel: ${empresa.telefono}` : ''}
       </div>
     </div>
     <div class="right">
@@ -220,9 +220,12 @@ function buildPDFHTML(factura, empresa, logoBase64) {
 
   <div class="info-grid">
     <div class="info-card">
-      <div class="info-label">Cliente</div>
-      <div class="info-value">${factura.nombreCliente}</div>
-    </div>
+  <div class="info-label">Cliente</div>
+  <div class="info-value">
+    ${factura.nombreCliente}
+    ${factura.rncCliente ? `<div style="font-size:12px;color:#64748b;margin-top:4px;">RNC/Cédula: ${factura.rncCliente}</div>` : ''}
+  </div>
+</div>
     <div class="info-card">
       <div class="info-label">Cajero / Vendedor</div>
       <div class="info-value">${factura.usuario}</div>
@@ -252,15 +255,15 @@ function buildPDFHTML(factura, empresa, logoBase64) {
 
   <div class="totals-wrap">
     <div class="totals-box">
-      ${factura.exento  > 0 ? `<div class="t-row"><span>Exento</span><span>${fmt(factura.exento)}</span></div>`   : ''}
+      ${factura.exento > 0 ? `<div class="t-row"><span>Exento</span><span>${fmt(factura.exento)}</span></div>` : ''}
       ${factura.gravado > 0 ? `<div class="t-row"><span>Gravado</span><span>${fmt(factura.gravado)}</span></div>` : ''}
-      ${factura.itbs    > 0 ? `<div class="t-row"><span>ITBS (18%)</span><span>${fmt(factura.itbs)}</span></div>` : ''}
+      ${factura.itbs > 0 ? `<div class="t-row"><span>ITBS (18%)</span><span>${fmt(factura.itbs)}</span></div>` : ''}
       <div class="t-row grand"><span>TOTAL</span><span>${fmt(factura.total)}</span></div>
       <div class="t-row"><span>Pagado</span><span style="font-weight:600;">${fmt(factura.pagado)}</span></div>
       ${(factura.total - factura.pagado) > 0
-        ? `<div class="t-row"><span>Pendiente</span><span style="color:#dc2626;">${fmt(factura.total - factura.pagado)}</span></div>`
-        : `<div class="t-row"><span>Cambio</span><span style="color:#10b981;">${fmt(factura.pagado - factura.total)}</span></div>`
-      }
+      ? `<div class="t-row"><span>Pendiente</span><span style="color:#dc2626;">${fmt(factura.total - factura.pagado)}</span></div>`
+      : `<div class="t-row"><span>Cambio</span><span style="color:#10b981;">${fmt(factura.pagado - factura.total)}</span></div>`
+    }
     </div>
   </div>
 
@@ -287,7 +290,7 @@ function buildPDFHTML(factura, empresa, logoBase64) {
  * @param {object} control  - Controles de la empresa ({ tamanoFactura: 0|1 })
  */
 export async function printFactura(factura, empresa, control) {
-  const esTicket  = (control?.tamanoFactura ?? 0) === 0
+  const esTicket = (control?.tamanoFactura ?? 0) === 0
   const logoBase64 = await loadLogo()
 
   const html = esTicket

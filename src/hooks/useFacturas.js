@@ -68,6 +68,8 @@ export const useSearchClientes = (queryParam) => {
     queryFn: () => commonService.searchClientes(queryParam),
     enabled: queryParam.length >= 2,
   });
+
+  
 };
 
 export const useSearchProductos = (queryParam) => {

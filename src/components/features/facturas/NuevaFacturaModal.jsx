@@ -16,17 +16,20 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
   const [clienteSel, setClienteSel] = useState(null);
   const [precioModal, setPrecioModal] = useState(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [esClienteGenerico, setEsClienteGenerico] = useState(false);
   const itbsPct = 0.18;
 
   const createMutation = useCreateFactura(onSaveSuccess);
 
-  const { register, handleSubmit, watch, control } = useForm({
-    defaultValues: { tipoPago: 'Efectivo', tipoComprobante: 1, detalles: [] },
+  const { register, handleSubmit, watch, control, setValue } = useForm({
+    defaultValues: { tipoPago: 'Efectivo', tipoComprobante: 1, detalles: [], nombreCliente: '' },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'detalles' });
 
   const { data: clientes = [] } = useSearchClientes(clienteSearch);
   const { data: productos = [] } = useSearchProductos(productoSearch);
+  const tipoComprobante = watch('tipoComprobante');
+  const nombreCliente = watch('nombreCliente');
 
   const detalles = watch('detalles');
   const exento = detalles.reduce((s, d) => s + (Number(d.itbis) === 0 ? parseFloat(d.cantidad || 0) * parseFloat(d.precio || 0) : 0), 0);
@@ -51,8 +54,7 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
   };
 
   const closeWithConfirm = () => {
-    // Siempre preguntar si hay cambios, sin importar si hay cliente o productos
-    if (detalles?.length > 0 || clienteSel || productoSearch) {
+    if (detalles?.length > 0 || clienteSel || productoSearch || nombreCliente) {
       setConfirmCancel(true);
     } else {
       onClose();
@@ -61,19 +63,47 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
 
   const handleDiscard = () => {
     setConfirmCancel(false);
-    // Limpiar estados por si acaso
     setClienteSel(null);
-    // Forzar cierre
+    setEsClienteGenerico(false);
     onClose();
+  };
+
+  const handleClienteGenericoChange = (e) => {
+    const checked = e.target.checked;
+    setEsClienteGenerico(checked);
+    if (checked) {
+      setClienteSel(null);
+      setClienteSearch('');
+      setValue('nombreCliente', '');
+    } else {
+      setValue('nombreCliente', '');
+    }
   };
 
   const submit = (data) => {
     if (fields.length === 0) { toast.error('Agrega al menos un producto'); return; }
+    
+    // Validar según el tipo de comprobante
+    if (parseInt(data.tipoComprobante) !== 1) { // 3 = Consumidor Final
+      if (!esClienteGenerico && !clienteSel) {
+        toast.error('Debe seleccionar un cliente');
+        return;
+      }
+      if (esClienteGenerico && !data.nombreCliente.trim()) {
+        toast.error('Debe ingresar el nombre del consumidor final');
+        return;
+      }
+    }
+    
     createMutation.mutate({
       empresaId: 1,
       clienteId: clienteSel?.clienteId || null,
       usuarioId: user?.usuarioId,
-      nombreCliente: clienteSel?.nombre || data.nombreCliente || 'Consumidor Final',
+      nombreCliente: esClienteGenerico ? data.nombreCliente : (clienteSel?.nombre || data.nombreCliente || 'Consumidor Final'),
+      rncCliente:
+  !esConsumidorFinal && !esClienteGenerico && clienteSel?.cedula
+    ? clienteSel.cedula
+    : null,
       tipoPago: data.tipoPago,
       total, itbs,
       pagado: 0,
@@ -91,6 +121,15 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
     });
   };
 
+  const esConsumidorFinal = parseInt(tipoComprobante) === 1;
+
+  // Determinar si mostrar el input de RNC (no es consumidor final, no es genérico, hay cliente seleccionado y tiene cédula)
+  const mostrarRNC =
+  !esConsumidorFinal &&
+  !esClienteGenerico &&
+  clienteSel;
+   
+
   return (
     <>
       <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeWithConfirm()}>
@@ -103,38 +142,6 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
           <form onSubmit={handleSubmit(submit)} className="space-y-5">
             <div className="grid grid-cols-3 gap-4">
               <div className="relative z-30">
-                <label className="label">Cliente</label>
-                {clienteSel ? (
-                  <div className="input flex items-center justify-between">
-                    <span className="text-sm font-medium">{clienteSel.nombre}</span>
-                    <button type="button" onClick={() => setClienteSel(null)} className="text-red-400 hover:text-red-600">×</button>
-                  </div>
-                ) : (
-                  <>
-                    <input className="input" placeholder="Buscar cliente..." value={clienteSearch} onChange={e => setClienteSearch(e.target.value)} />
-                    {clientes.length > 0 && (
-                      <div className="absolute z-40 w-full mt-1 rounded-lg border shadow-lg overflow-hidden"
-                        style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-                        {clientes.map(c =>
-                          <button key={c.clienteId} type="button"
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--bg-tertiary)]"
-                            onClick={() => { setClienteSel(c); setClienteSearch(''); }}>
-                            {c.nombre}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </>
-                )}
-                {!clienteSel && (
-                  <div className="mt-2">
-                    <label className="label">O escribe nombre</label>
-                    <input className="input" placeholder="Consumidor Final" {...register('nombreCliente')} />
-                  </div>
-                )}
-              </div>
-
-              <div className="z-20">
                 <label className="label">Comprobante</label>
                 <select className="input" {...register('tipoComprobante')}>
                   {TIPO_COMPROBANTE.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -148,6 +155,143 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                 </select>
               </div>
             </div>
+
+            {/* Sección de Cliente - Solo mostrar si NO es Consumidor Final */}
+            {parseInt(tipoComprobante) !== 3 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={esClienteGenerico}
+                      onChange={handleClienteGenericoChange}
+                      className="w-4 h-4 rounded"
+                    />
+                    <span className="text-sm" style={{ color: 'var(--text-primary)' }}>Cliente Genérico</span>
+                  </label>
+                </div>
+
+                {!esClienteGenerico ? (
+                  <div className="relative">
+                    <label className="label">Buscar Cliente</label>
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                      <input
+                        className="input pl-8"
+                        placeholder="Buscar por nombre o cédula..."
+                        value={clienteSearch}
+                        onChange={e => setClienteSearch(e.target.value)}
+                      />
+                    </div>
+                    
+                    {clientes.length > 0 && (
+                      <div className="absolute z-40 w-full mt-1 rounded-lg border shadow-lg max-h-60 overflow-y-auto"
+                        style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                        {clientes.map(c => (
+                          <button
+                            key={c.clienteId}
+                            type="button"
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--bg-tertiary)] transition-colors border-b last:border-b-0"
+                            style={{ borderColor: 'var(--border)' }}
+                            onClick={() => { 
+                              setClienteSel(c); 
+                              setClienteSearch('');
+                              setValue('nombreCliente', c.nombre);
+                            }}>
+                            <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{c.nombre}</div>
+                            {c.cedula && (
+                              <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                                Cédula/RNC: {c.cedula}
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-3">
+
+                     <label className="label text-sm">nombre del cliente</label>
+                     {/* Mostrar cliente seleccionado */}
+                    {clienteSel && (
+                      <div className="mt-2 p-2 rounded-lg flex items-center justify-between"
+                        style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+                          
+                        <div>
+                          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                            {clienteSel.nombre}
+                          </span>
+                          {/* {clienteSel.cedula && (
+                            <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
+                              Cédula: {clienteSel.cedula}
+                            </span>
+                          )} */}
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            setClienteSel(null);
+                            setValue('nombreCliente', '');
+                          }} 
+                          className="text-red-400 hover:text-red-600 text-lg leading-none">
+                          ×
+                        </button>
+                      </div>
+                    )}
+                    </div>
+
+                    {/* Input de RNC/Cédula no editable cuando hay cliente seleccionado */}
+                    {mostrarRNC && (
+                      <div className="mt-2">
+                        <label className="label text-sm">Cédula / RNC</label>
+                        <input
+                          type="text"
+                          className="input bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                          value={clienteSel.cedula}
+                          disabled
+                          readOnly
+                        />
+                      </div>
+                    )}
+
+                    {/* Input para nombre manual cuando no hay cliente seleccionado */}
+                    {!clienteSel && (
+                      <div className="mt-2">
+                        <label className="label">O escribe nombre</label>
+                        <input 
+                          className="input" 
+                          placeholder="Nombre del cliente" 
+                          {...register('nombreCliente')} 
+                        />
+                      </div>
+                    )}
+
+                   
+                  </div>
+                ) : (
+                  <div>
+                    <label className="label">Nombre del Cliente Genérico</label>
+                    <input
+                      className="input"
+                      placeholder="Ej: Juan Pérez"
+                      {...register('nombreCliente')}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Para Consumidor Final - solo un input simple */}
+            {parseInt(tipoComprobante) === 3 && (
+              <div>
+                <label className="label">Nombre del Cliente</label>
+                <input
+                  className="input"
+                  placeholder="Consumidor Final"
+                  {...register('nombreCliente')}
+                />
+              </div>
+            )}
 
             <div className="relative z-10">
               <label className="label">Agregar productos</label>
@@ -204,16 +348,16 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                           <td className="font-medium text-sm">{f.descripcion}</td>
                           <td>
                             <NumInput className="input text-center py-1 px-2 text-sm" {...register(`detalles.${i}.cantidad`)} />
-                          </td>
-                          <td>
+                           </td>
+                           <td>
                             <NumInput className="input text-right py-1 px-2 text-sm" {...register(`detalles.${i}.precio`)} />
-                          </td>
-                          <td>
+                           </td>
+                           <td>
                             <select className="input py-1 px-2 text-base min-w-[100px]" {...register(`detalles.${i}.itbis`, { valueAsNumber: true })}>
                               <option value={0}>Exento</option>
                               <option value={1}>18%</option>
                             </select>
-                          </td>
+                           </td>
                           <td className="text-right font-semibold text-sm tabular-nums">{fmt(sub)}</td>
                           <td>
                             <button type="button" onClick={() => remove(i)} className="btn-ghost btn-icon btn-sm text-red-400 hover:text-red-600">×</button>
