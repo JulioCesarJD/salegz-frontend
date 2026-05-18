@@ -24,14 +24,24 @@ export const useFactura = (facturaId) => {
 
 export const useCreateFactura = (onSuccessCallback) => {
   const qc = useQueryClient();
+
   return useMutation({
     mutationFn: facturasService.createFactura,
-    onSuccess: (res) => {
+
+    onSuccess: (res, variables) => {
       qc.invalidateQueries(['facturas']);
+
       toast.success('Factura creada');
-      if (onSuccessCallback) onSuccessCallback(res);
+
+      if (onSuccessCallback) {
+        onSuccessCallback(res, variables);
+      }
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al crear factura'),
+
+    onError: (e) =>
+      toast.error(
+        e.response?.data?.message || 'Error al crear factura'
+      ),
   });
 };
 

@@ -11,7 +11,7 @@ import { FacturaDetalle } from '../components/features/facturas/FacturaDetalle';
 import { CobroModal } from '../components/features/facturas/CobroModal';
 import { NuevaFacturaModal } from '../components/features/facturas/NuevaFacturaModal';
 import { AdminPinModal } from '../components/features/AdminModal/Adminpinmodal'; // ← nuevo
- 
+
 import * as commonService from '../services/commonService';
 import * as facturasService from '../services/facturasService';
 // import { printFactura } from '../../../utils/print/printFactura'
@@ -68,11 +68,21 @@ export function FacturasPage() {
   const totalMes = facturas.reduce((s, f) => f.estado !== 0 ? s + f.total : s, 0);
   const pendiente = facturas.reduce((s, f) => f.estado !== 0 ? s + (f.total - f.pagado) : s, 0);
 
-  const onNuevaFacturaSuccess = (res) => {
+  const onNuevaFacturaSuccess = (res, variables) => {
     setModal(null);
+
+    // SI ES CRÉDITO NO ABRIR COBRO
+    if (variables?.tipoFactura === 1) {
+      return;
+    }
+
+    // SOLO CONTADO ABRE COBRO
     const facturaId = res?.id;
+
     if (facturaId) {
-      facturasService.getFacturaById(facturaId).then(data => setCobroFactura(data));
+      facturasService
+        .getFacturaById(facturaId)
+        .then(data => setCobroFactura(data));
     }
   };
 
@@ -92,8 +102,8 @@ export function FacturasPage() {
 
 
   const handleSolicitarCancelacion = (facturaId) => {
-  setConfirmarId(facturaId);
-};
+    setConfirmarId(facturaId);
+  };
   // Paso 2 – el usuario confirmó en el diálogo
   const handleConfirmarCancelacion = () => {
     if (confirmarId == null) return;
@@ -106,7 +116,7 @@ export function FacturasPage() {
     }
   };
 
- 
+
 
 
   /** Paso 2 – el PIN fue verificado correctamente por AdminPinModal */

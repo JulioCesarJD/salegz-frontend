@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Banknote, CreditCard, ArrowRight } from 'lucide-react';
+ 
+import { Banknote, CreditCard, ArrowRight, Receipt} from 'lucide-react';
 import { useAuthStore } from '../../../store/authStore';
 import { useSaldarFactura } from '../../../hooks/useFacturas';
 import { fmt } from '../../../utils/format';
@@ -58,7 +59,7 @@ export function CobroModal({ factura, onClose }) {
         <div className="mb-4">
           <label className="label">Tipo de pago</label>
           <div className="grid grid-cols-3 gap-2">
-            {['Efectivo', 'Tarjeta', 'Transferencia'].map(t => (
+            {['Efectivo', 'Tarjeta', 'Transferencia', 'Cheque'].map(t => (
               <button key={t} type="button"
                 onClick={() => setTipoPago(t)}
                 className={`py-2.5 rounded-lg text-sm font-semibold border transition-all ${
@@ -74,24 +75,12 @@ export function CobroModal({ factura, onClose }) {
                 {t === 'Efectivo' && <Banknote size={14} className="mx-auto mb-1" />}
                 {t === 'Tarjeta'  && <CreditCard size={14} className="mx-auto mb-1" />}
                 {t === 'Transferencia' && <ArrowRight size={14} className="mx-auto mb-1" />}
+                {t === 'Cheque' && <Receipt size={14} className="mx-auto mb-1" />}
                 {t}
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            {['Cheque', 'Crédito'].map(t => (
-              <button key={t} type="button"
-                onClick={() => setTipoPago(t)}
-                className={`py-2 rounded-lg text-sm font-semibold border transition-all`}
-                style={{
-                  backgroundColor: tipoPago === t ? 'var(--brand-light)' : 'var(--bg-card)',
-                  borderColor: tipoPago === t ? 'var(--brand)' : 'var(--border)',
-                  color: tipoPago === t ? 'var(--brand)' : 'var(--text-secondary)',
-                }}>
-                {t}
-              </button>
-            ))}
-          </div>
+           
         </div>
 
         {/* Monto recibido (Corregido a NumInput) */}

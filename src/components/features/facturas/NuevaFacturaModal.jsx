@@ -9,6 +9,13 @@ import { fmt } from '../../../utils/format';
 import { PrecioSelectorModal } from '../../common/PrecioSelectorModal';
 import { NumInput } from '../../common/NumInput';
 
+
+const TIPO_FACTURA = [
+  { value: 0, label: 'Contado' },
+  { value: 1, label: 'Crédito' },
+];
+
+
 export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
   const { user } = useAuthStore();
   const [clienteSearch, setClienteSearch] = useState('');
@@ -19,8 +26,9 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
   const [esClienteGenerico, setEsClienteGenerico] = useState(false);
   const itbsPct = 0.18;
 
-  const createMutation = useCreateFactura(onSaveSuccess);
+  const createMutation = useCreateFactura();
 
+ 
   const { register, handleSubmit, watch, control, setValue } = useForm({
     defaultValues: { tipoPago: 'Efectivo', tipoComprobante: 1, detalles: [], nombreCliente: '' },
   });
@@ -82,7 +90,7 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
 
   const submit = (data) => {
     if (fields.length === 0) { toast.error('Agrega al menos un producto'); return; }
-    
+
     // Validar según el tipo de comprobante
     if (parseInt(data.tipoComprobante) !== 1) { // 3 = Consumidor Final
       if (!esClienteGenerico && !clienteSel) {
@@ -94,30 +102,57 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
         return;
       }
     }
-    
+
     createMutation.mutate({
-      empresaId: 1,
-      clienteId: clienteSel?.clienteId || null,
-      usuarioId: user?.usuarioId,
-      nombreCliente: esClienteGenerico ? data.nombreCliente : (clienteSel?.nombre || data.nombreCliente || 'Consumidor Final'),
-      rncCliente:
-  !esConsumidorFinal && !esClienteGenerico && clienteSel?.cedula
-    ? clienteSel.cedula
-    : null,
-      tipoPago: data.tipoPago,
-      total, itbs,
-      pagado: 0,
-      exento, gravado,
-      tarjeta: data.tipoPago === 'Tarjeta',
-      tipoComprobante: parseInt(data.tipoComprobante),
-      detalles: data.detalles.map(d => ({
-        productoId: d.productoId,
-        cantidad: parseFloat(d.cantidad || 0),
-        subTotal: parseFloat(d.cantidad || 0) * parseFloat(d.precio || 0),
-        itbs: Number(d.itbis) === 1 ? parseFloat(d.cantidad || 0) * parseFloat(d.precio || 0) * itbsPct : 0,
-        costo: parseFloat(d.costo || 0),
-        comision: parseFloat(d.comision || 0),
-      })),
+  empresaId: 1,
+  clienteId: clienteSel?.clienteId || null,
+  usuarioId: user?.usuarioId,
+
+  tipoFactura: data.tipoFactura,
+
+  nombreCliente: esClienteGenerico
+    ? data.nombreCliente
+    : (clienteSel?.nombre || data.nombreCliente || 'Consumidor Final'),
+
+  rncCliente:
+    !esConsumidorFinal &&
+    !esClienteGenerico &&
+    clienteSel?.cedula
+      ? clienteSel.cedula
+      : null,
+
+  tipoPago: data.tipoPago,
+
+  total,
+  itbs,
+
+  pagado: data.tipoFactura === 1 ? 0 : total,
+
+  exento,
+  gravado,
+
+  tarjeta: data.tipoPago === 'Tarjeta',
+  tipoComprobante: parseInt(data.tipoComprobante),
+
+  detalles: data.detalles.map(d => ({
+    productoId: d.productoId,
+    cantidad: parseFloat(d.cantidad || 0),
+    subTotal:
+      parseFloat(d.cantidad || 0) *
+      parseFloat(d.precio || 0),
+
+    itbs:
+      Number(d.itbis) === 1
+        ? parseFloat(d.cantidad || 0) *
+          parseFloat(d.precio || 0) *
+          itbsPct
+        : 0,
+
+    costo: parseFloat(d.costo || 0),
+    comision: parseFloat(d.comision || 0),
+  })),
+    }, {
+
     });
   };
 
@@ -125,10 +160,10 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
 
   // Determinar si mostrar el input de RNC (no es consumidor final, no es genérico, hay cliente seleccionado y tiene cédula)
   const mostrarRNC =
-  !esConsumidorFinal &&
-  !esClienteGenerico &&
-  clienteSel;
-   
+    !esConsumidorFinal &&
+    !esClienteGenerico &&
+    clienteSel;
+
 
   return (
     <>
@@ -141,6 +176,16 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
 
           <form onSubmit={handleSubmit(submit)} className="space-y-5">
             <div className="grid grid-cols-3 gap-4">
+
+              <div>
+                <label className="label">Tipo de factura</label>
+                <select className="input" {...register('tipoFactura', { valueAsNumber: true })}>
+                  {TIPO_FACTURA.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="relative z-30">
                 <label className="label">Comprobante</label>
                 <select className="input" {...register('tipoComprobante')}>
@@ -148,12 +193,7 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                 </select>
               </div>
 
-              <div className="z-20">
-                <label className="label">Tipo de pago</label>
-                <select className="input" {...register('tipoPago')}>
-                  {METODOS_PAGO.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
+
             </div>
 
             {/* Sección de Cliente - Solo mostrar si NO es Consumidor Final */}
@@ -183,7 +223,7 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                         onChange={e => setClienteSearch(e.target.value)}
                       />
                     </div>
-                    
+
                     {clientes.length > 0 && (
                       <div className="absolute z-40 w-full mt-1 rounded-lg border shadow-lg max-h-60 overflow-y-auto"
                         style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
@@ -193,8 +233,8 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                             type="button"
                             className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--bg-tertiary)] transition-colors border-b last:border-b-0"
                             style={{ borderColor: 'var(--border)' }}
-                            onClick={() => { 
-                              setClienteSel(c); 
+                            onClick={() => {
+                              setClienteSel(c);
                               setClienteSearch('');
                               setValue('nombreCliente', c.nombre);
                             }}>
@@ -211,33 +251,33 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
 
                     <div className="mt-3">
 
-                     <label className="label text-sm">nombre del cliente</label>
-                     {/* Mostrar cliente seleccionado */}
-                    {clienteSel && (
-                      <div className="mt-2 p-2 rounded-lg flex items-center justify-between"
-                        style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-                          
-                        <div>
-                          <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                            {clienteSel.nombre}
-                          </span>
-                          {/* {clienteSel.cedula && (
+                      <label className="label text-sm">nombre del cliente</label>
+                      {/* Mostrar cliente seleccionado */}
+                      {clienteSel && (
+                        <div className="mt-2 p-2 rounded-lg flex items-center justify-between"
+                          style={{ backgroundColor: 'var(--bg-tertiary)' }}>
+
+                          <div>
+                            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                              {clienteSel.nombre}
+                            </span>
+                            {/* {clienteSel.cedula && (
                             <span className="text-xs ml-2" style={{ color: 'var(--text-muted)' }}>
                               Cédula: {clienteSel.cedula}
                             </span>
                           )} */}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setClienteSel(null);
+                              setValue('nombreCliente', '');
+                            }}
+                            className="text-red-400 hover:text-red-600 text-lg leading-none">
+                            ×
+                          </button>
                         </div>
-                        <button 
-                          type="button" 
-                          onClick={() => {
-                            setClienteSel(null);
-                            setValue('nombreCliente', '');
-                          }} 
-                          className="text-red-400 hover:text-red-600 text-lg leading-none">
-                          ×
-                        </button>
-                      </div>
-                    )}
+                      )}
                     </div>
 
                     {/* Input de RNC/Cédula no editable cuando hay cliente seleccionado */}
@@ -258,15 +298,15 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                     {!clienteSel && (
                       <div className="mt-2">
                         <label className="label">O escribe nombre</label>
-                        <input 
-                          className="input" 
-                          placeholder="Nombre del cliente" 
-                          {...register('nombreCliente')} 
+                        <input
+                          className="input"
+                          placeholder="Nombre del cliente"
+                          {...register('nombreCliente')}
                         />
                       </div>
                     )}
 
-                   
+
                   </div>
                 ) : (
                   <div>
@@ -348,16 +388,16 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                           <td className="font-medium text-sm">{f.descripcion}</td>
                           <td>
                             <NumInput className="input text-center py-1 px-2 text-sm" {...register(`detalles.${i}.cantidad`)} />
-                           </td>
-                           <td>
+                          </td>
+                          <td>
                             <NumInput className="input text-right py-1 px-2 text-sm" {...register(`detalles.${i}.precio`)} />
-                           </td>
-                           <td>
+                          </td>
+                          <td>
                             <select className="input py-1 px-2 text-base min-w-[100px]" {...register(`detalles.${i}.itbis`, { valueAsNumber: true })}>
                               <option value={0}>Exento</option>
                               <option value={1}>18%</option>
                             </select>
-                           </td>
+                          </td>
                           <td className="text-right font-semibold text-sm tabular-nums">{fmt(sub)}</td>
                           <td>
                             <button type="button" onClick={() => remove(i)} className="btn-ghost btn-icon btn-sm text-red-400 hover:text-red-600">×</button>
@@ -393,8 +433,16 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
 
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={closeWithConfirm} className="btn-secondary flex-1">Cancelar</button>
-              <button type="submit" disabled={createMutation.isPending || fields.length === 0} className="btn-primary flex-1">
-                {createMutation.isPending ? 'Guardando...' : 'Crear factura y cobrar →'}
+              <button
+                type="submit"
+                disabled={createMutation.isPending || fields.length === 0}
+                className="btn-primary flex-1"
+              >
+                {createMutation.isPending
+                  ? 'Guardando...'
+                  : watch('tipoFactura') === 1
+                    ? 'Guardar factura'
+                    : 'Crear factura y cobrar →'}
               </button>
             </div>
           </form>
