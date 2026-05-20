@@ -18,6 +18,13 @@ import * as facturasService from '../services/facturasService';
 
 import { printFactura } from '../utils/print/printFactura'
 
+export const TIPO_NCF = {
+  CONSUMIDOR_FINAL: 'consumidorFinal',
+  CREDITO_FISCAL: 'fiscal',
+  REGIMEN_ESPECIAL: 'regimenEspecial',
+  GUBERNAMENTAL: 'gubernamental',
+};
+
 
 export function FacturasPage() {
   const { user } = useAuthStore();
@@ -42,6 +49,7 @@ export function FacturasPage() {
   const hoy = localDate();
 
   const [search, setSearch] = useState('');
+  const [tipoNcf, setTipoNcf] = useState('');
   const [estado, setEstado] = useState('');
   const [desde, setDesde] = useState(hoy);
   const [hasta, setHasta] = useState(hoy);
@@ -57,7 +65,17 @@ export function FacturasPage() {
   const [pinPendiente, setPinPendiente] = useState(null);
   // ────────────────────────────────────────────────────────────────────────────
 
-  const { data: facturas = [], isLoading } = useFacturas(estado, desde, hasta, soloMios, user?.usuarioId);
+  // const { data: facturas = [], isLoading } = useFacturas(estado, desde, hasta, soloMios, user?.usuarioId);
+  
+  const { data: facturas = [], isLoading } = useFacturas(
+    estado,
+    desde,
+    hasta,
+    soloMios,
+    user?.usuarioId,
+    tipoNcf 
+  );
+  
   const cancelarMutation = useCancelarFactura();
 
   const list = facturas.filter(f => {
@@ -70,7 +88,7 @@ export function FacturasPage() {
 
   const onNuevaFacturaSuccess = (res, variables) => {
     setModal(null);
-
+` `
     // SI ES CRÉDITO NO ABRIR COBRO
     if (variables?.tipoFactura === 1) {
       return;
@@ -196,6 +214,18 @@ export function FacturasPage() {
           <option value="1">Activa</option>
           <option value="2">Saldada</option>
           <option value="3">Cuenta abierta</option>
+        </select>
+
+        <select
+          className="input w-full sm:w-44"
+          value={tipoNcf}
+          onChange={(e) => setTipoNcf(e.target.value)}
+        >
+          <option value="">Todos los comprobantes</option>
+          <option value="consumidorFinal">Consumidor Final</option>
+          <option value="fiscal">Crédito Fiscal</option>
+          <option value="regimenEspecial">Régimen Especial</option>
+          <option value="gubernamental">Gubernamental</option>
         </select>
 
         <div className="flex gap-2">

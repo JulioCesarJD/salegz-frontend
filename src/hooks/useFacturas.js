@@ -1,14 +1,37 @@
+// hooks/useFacturas.js - Actualizado
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as facturasService from '../services/facturasService';
 import * as commonService from '../services/commonService'; 
 
+// Mapeo de tipo de comprobante a valor numérico
+export const TIPO_COMPROBANTE_MAP = {
+  'consumidorFinal': 0,
+  'fiscal': 1,
+  'regimenEspecial': 2,
+  'gubernamental': 3,
+};
+
 // --- Queries ---
 
-export const useFacturas = (estado, desde, hasta, soloMios, usuarioId) => {
+export const useFacturas = (estado, desde, hasta, soloMios, usuarioId, tipoComprobante) => {
   return useQuery({
-    queryKey: ['facturas', estado, desde, hasta, soloMios],
-    queryFn: () => facturasService.getFacturas(estado, desde, hasta, soloMios ? usuarioId : null),
+    queryKey: ['facturas', estado, desde, hasta, soloMios, tipoComprobante],
+    queryFn: () => {
+      // Convertir el tipo de comprobante de string a número
+      let tipoComprobanteValue = null;
+      if (tipoComprobante && TIPO_COMPROBANTE_MAP[tipoComprobante] !== undefined) {
+        tipoComprobanteValue = TIPO_COMPROBANTE_MAP[tipoComprobante];
+      }
+      
+      return facturasService.getFacturas(
+        estado, 
+        desde, 
+        hasta, 
+        soloMios ? usuarioId : null,
+        tipoComprobanteValue
+      );
+    },
   });
 };
 
@@ -20,7 +43,7 @@ export const useFactura = (facturaId) => {
   });
 };
 
-// --- Mutaciones ---
+// --- Mutaciones (resto igual) ---
 
 export const useCreateFactura = (onSuccessCallback) => {
   const qc = useQueryClient();
@@ -70,7 +93,7 @@ export const useCancelarFactura = () => {
   });
 };
 
-// --- Common Queries (Usadas en facturas y cotizaciones) ---
+// --- Common Queries ---
 
 export const useSearchClientes = (queryParam) => {
   return useQuery({
@@ -78,8 +101,6 @@ export const useSearchClientes = (queryParam) => {
     queryFn: () => commonService.searchClientes(queryParam),
     enabled: queryParam.length >= 2,
   });
-
-  
 };
 
 export const useSearchProductos = (queryParam) => {
@@ -96,9 +117,6 @@ export const useEmpresaInfo = () => {
   return { empresa: em.data, control: ct.data, isLoading: em.isLoading || ct.isLoading };
 };
 
-  
-
-// Y el hook, reemplázalo así para que use el namespace correcto:
 export const useActualizarFactura = (onSuccess) => {
   const queryClient = useQueryClient();
   return useMutation({
@@ -106,7 +124,7 @@ export const useActualizarFactura = (onSuccess) => {
     
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['facturas'] });
-      queryClient.invalidateQueries({ queryKey: ['factura'] }); // también refresca el detalle
+      queryClient.invalidateQueries({ queryKey: ['factura'] });
       toast.success('Factura actualizada');
       onSuccess?.();
     },
@@ -114,4 +132,3 @@ export const useActualizarFactura = (onSuccess) => {
     onError: (e) => toast.error(e.response?.data?.message || 'Error al actualizar factura'),
   });
 };
-

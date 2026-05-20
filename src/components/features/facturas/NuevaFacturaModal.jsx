@@ -16,6 +16,7 @@ const TIPO_FACTURA = [
 ];
 
 
+
 export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
   const { user } = useAuthStore();
   const [clienteSearch, setClienteSearch] = useState('');
@@ -26,7 +27,12 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
   const [esClienteGenerico, setEsClienteGenerico] = useState(false);
   const itbsPct = 0.18;
 
-  const createMutation = useCreateFactura();
+  const [facturaCobro, setFacturaCobro] = useState(null);
+
+
+const createMutation = useCreateFactura((res, variables) => {
+  onSaveSuccess?.(res, variables);
+});
 
  
   const { register, handleSubmit, watch, control, setValue } = useForm({

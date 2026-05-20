@@ -7,6 +7,7 @@ import { EditarFacturaModal } from './EditarFacturaModal';
 import { printFactura } from '../../../utils/print/printFactura'
 
 
+
 export function FacturaDetalle({ facturaId, onClose }) {
   const { data: f, isLoading: loadingF } = useFactura(facturaId);
   const { empresa, control, isLoading: loadingE } = useEmpresaInfo();
