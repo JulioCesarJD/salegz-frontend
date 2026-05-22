@@ -66,16 +66,16 @@ export function FacturasPage() {
   // ────────────────────────────────────────────────────────────────────────────
 
   // const { data: facturas = [], isLoading } = useFacturas(estado, desde, hasta, soloMios, user?.usuarioId);
-  
+
   const { data: facturas = [], isLoading } = useFacturas(
     estado,
     desde,
     hasta,
     soloMios,
     user?.usuarioId,
-    tipoNcf 
+    tipoNcf
   );
-  
+
   const cancelarMutation = useCancelarFactura();
 
   const list = facturas.filter(f => {
@@ -88,7 +88,7 @@ export function FacturasPage() {
 
   const onNuevaFacturaSuccess = (res, variables) => {
     setModal(null);
-` `
+    ` `
     // SI ES CRÉDITO NO ABRIR COBRO
     if (variables?.tipoFactura === 1) {
       return;
@@ -125,13 +125,7 @@ export function FacturasPage() {
   // Paso 2 – el usuario confirmó en el diálogo
   const handleConfirmarCancelacion = () => {
     if (confirmarId == null) return;
-    if (isAdmin) {
-      cancelarMutation.mutate(confirmarId);
-      setConfirmarId(null);
-    } else {
-      setPinPendiente(confirmarId);
-      setConfirmarId(null);
-    }
+    
   };
 
 
@@ -208,25 +202,32 @@ export function FacturasPage() {
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
 
-        <select className="input w-full sm:w-40" value={estado} onChange={e => setEstado(e.target.value)}>
-          <option value="">Todos los estados</option>
-          <option value="0">Cancelada</option>
-          <option value="1">Activa</option>
-          <option value="2">Saldada</option>
-          <option value="3">Cuenta abierta</option>
-        </select>
+        <div className=" ">
+          <label className="label text-xs sm:text-sm">filtre estados</label>
+          <select className="input w-full sm:w-40" value={estado} onChange={e => setEstado(e.target.value)}>
+            <option value="">Todos los estados</option>
+            <option value="0">Cancelada</option>
+            <option value="1">Activa</option>
+            <option value="2">Saldada</option>
+            <option value="3">Cuenta abierta</option>
+          </select>
+        </div>
 
-        <select
-          className="input w-full sm:w-44"
-          value={tipoNcf}
-          onChange={(e) => setTipoNcf(e.target.value)}
-        >
-          <option value="">Todos los comprobantes</option>
-          <option value="consumidorFinal">Consumidor Final</option>
-          <option value="fiscal">Crédito Fiscal</option>
-          <option value="regimenEspecial">Régimen Especial</option>
-          <option value="gubernamental">Gubernamental</option>
-        </select>
+        <div className=" ">
+          <label className="label text-xs sm:text-sm">filtre Comprobate</label>
+          <select
+            className="input w-full sm:w-44"
+            value={tipoNcf}
+            onChange={(e) => setTipoNcf(e.target.value)}
+          >
+            <option value="">Todos los comprobantes</option>
+            <option value="consumidorFinal">Consumidor Final</option>
+            <option value="fiscal">Crédito Fiscal</option>
+            <option value="regimenEspecial">Régimen Especial</option>
+            <option value="gubernamental">Gubernamental</option>
+          </select>
+        </div>
+
 
         <div className="flex gap-2">
           <div className="flex-1">
@@ -313,8 +314,7 @@ export function FacturasPage() {
                           <DollarSign size={14} />
                         </button>
                       )}
-                      {f.estado !== 0 && (
-                        // ← Ahora llama al flujo de PIN en lugar de confirm()
+                      {isAdmin && f.estado !== 0 && (
                         <button
                           onClick={() => handleSolicitarCancelacion(f.facturaId)}
                           className="btn-ghost btn-icon btn-sm text-red-400"

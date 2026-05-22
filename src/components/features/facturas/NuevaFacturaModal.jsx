@@ -8,7 +8,8 @@ import { TIPO_COMPROBANTE, METODOS_PAGO } from '../../../constants/facturacion';
 import { fmt } from '../../../utils/format';
 import { PrecioSelectorModal } from '../../common/PrecioSelectorModal';
 import { NumInput } from '../../common/NumInput';
-
+import { useQuery } from '@tanstack/react-query';
+import api from '../../../lib/api';
 
 const TIPO_FACTURA = [
   { value: 0, label: 'Contado' },
@@ -16,8 +17,33 @@ const TIPO_FACTURA = [
 ];
 
 
-
 export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
+
+
+  const limpiarFormulario = () => {
+    // limpiar field array
+    replace([]);
+
+    // limpiar react-hook-form
+    reset({
+      tipoPago: 'Efectivo',
+      tipoComprobante: 1,
+      tipoFactura: 0,
+      detalles: [],
+      nombreCliente: '',
+    });
+
+    // limpiar estados
+    setClienteSearch('');
+    setProductoSearch('');
+    setClienteSel(null);
+    setPrecioModal(null);
+    setConfirmCancel(false);
+    setEsClienteGenerico(false);
+    setFacturaCobro(null);
+  };
+
+
   const { user } = useAuthStore();
   const [clienteSearch, setClienteSearch] = useState('');
   const [productoSearch, setProductoSearch] = useState('');
@@ -25,30 +51,66 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
   const [precioModal, setPrecioModal] = useState(null);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [esClienteGenerico, setEsClienteGenerico] = useState(false);
-  const itbsPct = 0.18;
 
+  const { data: configControl } = useQuery({
+    queryKey: ['controles'],
+    queryFn: () => api.get('/api/empresa/control').then(r => r.data),
+  });
+
+  const itbsPct = (parseFloat(configControl?.itbs || 18)) / 100;
   const [facturaCobro, setFacturaCobro] = useState(null);
 
 
-const createMutation = useCreateFactura((res, variables) => {
-  onSaveSuccess?.(res, variables);
-});
+  const createMutation = useCreateFactura((res, variables) => {
+    onSaveSuccess?.(res, variables);
+  });
 
- 
-  const { register, handleSubmit, watch, control, setValue } = useForm({
+
+  const { register, handleSubmit, watch, control, setValue, reset } = useForm({
     defaultValues: { tipoPago: 'Efectivo', tipoComprobante: 1, detalles: [], nombreCliente: '' },
   });
-  const { fields, append, remove } = useFieldArray({ control, name: 'detalles' });
 
+  const { fields, append, remove, replace } = useFieldArray({
+    control,
+    name: 'detalles'
+  });
   const { data: clientes = [] } = useSearchClientes(clienteSearch);
   const { data: productos = [] } = useSearchProductos(productoSearch);
   const tipoComprobante = watch('tipoComprobante');
   const nombreCliente = watch('nombreCliente');
 
   const detalles = watch('detalles');
-  const exento = detalles.reduce((s, d) => s + (Number(d.itbis) === 0 ? parseFloat(d.cantidad || 0) * parseFloat(d.precio || 0) : 0), 0);
-  const gravado = detalles.reduce((s, d) => s + (Number(d.itbis) === 1 ? parseFloat(d.cantidad || 0) * parseFloat(d.precio || 0) : 0), 0);
-  const itbs = gravado * itbsPct;
+
+  const exento = detalles.reduce((s, d) => {
+    const subtotal =
+      parseFloat(d.cantidad || 0) *
+      parseFloat(d.precio || 0);
+
+    return Number(d.itbis || 0) === 0
+      ? s + subtotal
+      : s;
+  }, 0);
+
+  const gravado = detalles.reduce((s, d) => {
+    const subtotal =
+      parseFloat(d.cantidad || 0) *
+      parseFloat(d.precio || 0);
+
+    return Number(d.itbis || 0) > 0
+      ? s + subtotal
+      : s;
+  }, 0);
+
+  const itbs = detalles.reduce((s, d) => {
+    const subtotal =
+      parseFloat(d.cantidad || 0) *
+      parseFloat(d.precio || 0);
+
+    const pct = parseFloat(d.itbis || 0) / 100;
+
+    return s + (subtotal * pct);
+  }, 0);
+
   const total = exento + gravado + itbs;
 
   const handleProductoClick = (p) => {
@@ -62,7 +124,15 @@ const createMutation = useCreateFactura((res, variables) => {
   };
 
   const agregarProducto = (p, precio) => {
-    append({ productoId: p.productoId, descripcion: p.descripcion, cantidad: '1', precio: precio.toString(), itbis: 0, costo: 0, comision: 0 });
+    append({
+      productoId: p.productoId,
+      descripcion: p.descripcion,
+      cantidad: '1',
+      precio: precio.toString(),
+      itbis: 0,
+      costo: 0,
+      comision: 0
+    });
     setProductoSearch('');
     setPrecioModal(null);
   };
@@ -71,16 +141,20 @@ const createMutation = useCreateFactura((res, variables) => {
     if (detalles?.length > 0 || clienteSel || productoSearch || nombreCliente) {
       setConfirmCancel(true);
     } else {
+      limpiarFormulario();
       onClose();
     }
   };
 
   const handleDiscard = () => {
-    setConfirmCancel(false);
-    setClienteSel(null);
-    setEsClienteGenerico(false);
-    onClose();
+    limpiarFormulario();
+
+    // cerrar en el siguiente ciclo
+    setTimeout(() => {
+      onClose();
+    }, 0);
   };
+
 
   const handleClienteGenericoChange = (e) => {
     const checked = e.target.checked;
@@ -110,53 +184,47 @@ const createMutation = useCreateFactura((res, variables) => {
     }
 
     createMutation.mutate({
-  empresaId: 1,
-  clienteId: clienteSel?.clienteId || null,
-  usuarioId: user?.usuarioId,
+      empresaId: 1,
+      clienteId: clienteSel?.clienteId || null,
+      usuarioId: user?.usuarioId,
 
-  tipoFactura: data.tipoFactura,
+      tipoFactura: data.tipoFactura,
 
-  nombreCliente: esClienteGenerico
-    ? data.nombreCliente
-    : (clienteSel?.nombre || data.nombreCliente || 'Consumidor Final'),
+      nombreCliente: esClienteGenerico
+        ? data.nombreCliente
+        : (clienteSel?.nombre || data.nombreCliente || 'Consumidor Final'),
 
-  rncCliente:
-    !esConsumidorFinal &&
-    !esClienteGenerico &&
-    clienteSel?.cedula
-      ? clienteSel.cedula
-      : null,
+      rncCliente:
+        !esConsumidorFinal &&
+          !esClienteGenerico &&
+          clienteSel?.cedula
+          ? clienteSel.cedula
+          : null,
 
-  tipoPago: data.tipoPago,
+      tipoPago: data.tipoPago,
+      total,
+      itbs,
+      pagado: 0,
+      exento,
+      gravado,
+      tarjeta: data.tipoPago === 'Tarjeta',
+      tipoComprobante: parseInt(data.tipoComprobante),
 
-  total,
-  itbs,
+      detalles: data.detalles.map(d => ({
+        productoId: d.productoId,
+        cantidad: parseFloat(d.cantidad || 0),
+        subTotal:
+          parseFloat(d.cantidad || 0) *
+          parseFloat(d.precio || 0),
 
-  pagado: data.tipoFactura === 1 ? 0 : total,
-
-  exento,
-  gravado,
-
-  tarjeta: data.tipoPago === 'Tarjeta',
-  tipoComprobante: parseInt(data.tipoComprobante),
-
-  detalles: data.detalles.map(d => ({
-    productoId: d.productoId,
-    cantidad: parseFloat(d.cantidad || 0),
-    subTotal:
-      parseFloat(d.cantidad || 0) *
-      parseFloat(d.precio || 0),
-
-    itbs:
-      Number(d.itbis) === 1
-        ? parseFloat(d.cantidad || 0) *
+        itbs:
+          parseFloat(d.cantidad || 0) *
           parseFloat(d.precio || 0) *
-          itbsPct
-        : 0,
+          (parseFloat(d.itbis || 0) / 100),
 
-    costo: parseFloat(d.costo || 0),
-    comision: parseFloat(d.comision || 0),
-  })),
+        costo: parseFloat(d.costo || 0),
+        comision: parseFloat(d.comision || 0),
+      })),
     }, {
 
     });
@@ -173,11 +241,15 @@ const createMutation = useCreateFactura((res, variables) => {
 
   return (
     <>
-      <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeWithConfirm()}>
+      <div className="modal-overlay" onClick={e => {
+        if (confirmCancel) return;  // ← bloquea cuando el confirm está abierto
+        e.target === e.currentTarget && closeWithConfirm();
+      }}>
+
         <div className="modal-box max-w-5xl overflow-y-auto max-h-[90vh]">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Nueva factura</h2>
-            <button type="button" onClick={closeWithConfirm} className="btn-ghost btn-icon text-lg leading-none rounded-lg">×</button>
+            <button type="button" onClick={() => !confirmCancel && closeWithConfirm()} className="btn-ghost btn-icon text-lg leading-none rounded-lg">×</button>
           </div>
 
           <form onSubmit={handleSubmit(submit)} className="space-y-5">
@@ -388,7 +460,7 @@ const createMutation = useCreateFactura((res, variables) => {
                       const cant = parseFloat(watch(`detalles.${i}.cantidad`) || 0);
                       const prec = parseFloat(watch(`detalles.${i}.precio`) || 0);
                       const itbis = Number(watch(`detalles.${i}.itbis`));
-                      const sub = cant * prec * (itbis === 1 ? (1 + itbsPct) : 1);
+                      const sub = cant * prec * (1 + (itbis / 100));
                       return (
                         <tr key={f.id}>
                           <td className="font-medium text-sm">{f.descripcion}</td>
@@ -399,10 +471,36 @@ const createMutation = useCreateFactura((res, variables) => {
                             <NumInput className="input text-right py-1 px-2 text-sm" {...register(`detalles.${i}.precio`)} />
                           </td>
                           <td>
-                            <select className="input py-1 px-2 text-base min-w-[100px]" {...register(`detalles.${i}.itbis`, { valueAsNumber: true })}>
-                              <option value={0}>Exento</option>
-                              <option value={1}>18%</option>
-                            </select>
+                            <div className="flex items-center gap-2">
+                              <select
+                                className="input py-1 px-2 text-base w-[110px]"
+                                value={watch(`detalles.${i}.itbis`) || 0}
+                                onChange={(e) => {
+                                  setValue(
+                                    `detalles.${i}.itbis`,
+                                    parseFloat(e.target.value || 0)
+                                  );
+                                }}
+                              >
+                                <option value={0}>Exento</option>
+
+                                <option value={configControl?.itbs || 18}>
+                                  {configControl?.itbs || 18}%
+                                </option>
+                              </select>
+
+                              <NumInput
+                                className="input w-[80px] py-1 px-2 text-sm"
+                                value={watch(`detalles.${i}.itbis`) || 0}
+                                disabled={Number(watch(`detalles.${i}.itbis`)) === 0}
+                                onChange={(e) => {
+                                  setValue(
+                                    `detalles.${i}.itbis`,
+                                    parseFloat(e.target.value || 0)
+                                  );
+                                }}
+                              />
+                            </div>
                           </td>
                           <td className="text-right font-semibold text-sm tabular-nums">{fmt(sub)}</td>
                           <td>
@@ -464,8 +562,14 @@ const createMutation = useCreateFactura((res, variables) => {
       )}
 
       {confirmCancel && (
-        <div className="modal-overlay z-50" onClick={e => e.target === e.currentTarget && setConfirmCancel(false)}>
-          <div className="modal-box max-w-sm">
+        <div
+           className="modal-overlay z-[51]" 
+          onClick={e => {
+            e.stopPropagation();
+            e.target === e.currentTarget && setConfirmCancel(false);
+          }}
+        >
+          <div className="modal-box max-w-sm" onClick={e => e.stopPropagation()}>
             <h3 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>¿Descartar factura?</h3>
             <p className="text-sm mt-1 mb-4" style={{ color: 'var(--text-muted)' }}>Se perderán todos los cambios.</p>
             <div className="flex gap-3">

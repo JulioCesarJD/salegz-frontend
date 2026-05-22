@@ -132,7 +132,7 @@
   left: 0;
   width: 100vw;
   height: 100dvh; /* 👈 cubre todo el viewport incluyendo donde está el navbar */
-  z-index: 9999;  /* 👈 mayor que cualquier navbar/sidebar */
+  z-index: 50;  /* 👈 mayor que cualquier navbar/sidebar */
   background-color: rgba(0,0,0,0.55);
   backdrop-filter: blur(2px);
 }
