@@ -7,7 +7,7 @@ export function ClienteModal({ cliente, onClose }) {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const isEdit = !!cliente?.clienteId;
   const { register, handleSubmit, formState: { errors, isDirty } } = useForm({
-    defaultValues: cliente || { tipo: 0, credito: 0, sexo: 'true' },
+    defaultValues: cliente || { tipo: 0, tipoEntidad: 0, credito: 0, sexo: 'true' },
   });
 
   const createMutation = useCreateCliente(() => onClose());
@@ -37,6 +37,7 @@ export function ClienteModal({ cliente, onClose }) {
       ...d,
       empresaId:       1,
       tipo:            parseInt(d.tipo),
+      tipoEntidad: parseInt(d.tipoEntidad),
       credito:         parseFloat(d.credito || 0),
       sexo:            d.sexo === 'true' || d.sexo === true,
       fechaNacimiento: d.fechaNacimiento || null,
@@ -94,22 +95,35 @@ export function ClienteModal({ cliente, onClose }) {
           </div>
 
           <div>
+            <label className="label">Entidad</label>
+
+            <select
+              className="input"
+              {...register('tipoEntidad')}
+            >
+              <option value={0}>Cliente</option>
+              <option value={1}>Proveedor</option>
+              <option value={2}>Ambos</option>
+            </select>
+          </div>
+
+          <div>
             <label className="label">Límite crédito (RD$)</label>
             <NumInput className="input" placeholder="0.00" {...register('credito')} />
           </div>
 
-          <div>
+          {/* <div>
             <label className="label">Sexo</label>
             <select className="input" {...register('sexo')}>
               <option value="true">Masculino</option>
               <option value="false">Femenino</option>
             </select>
-          </div>
+          </div> */}
 
-          <div>
+          {/* <div>
             <label className="label">Fecha nacimiento</label>
             <input type="date" className="input" {...register('fechaNacimiento')} />
-          </div>
+          </div> */}
 
           <div className="col-span-2">
             <label className="label">Dirección</label>

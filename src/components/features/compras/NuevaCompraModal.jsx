@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '../../../lib/api';
 import { useAuthStore } from '../../../store/authStore';
 import { useCreateCompra } from '../../../hooks/useCompras';
 import { fmt } from '../../../utils/format';
 import { NumInput } from '../../common/NumInput';
+import { getClientes } from '../../../services/clientesService';
+import { getProductos } from '../../../services/productosService';
 
 export function NuevaCompraModal({ onClose }) {
   const { user } = useAuthStore();
@@ -23,34 +24,55 @@ export function NuevaCompraModal({ onClose }) {
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'detalles' });
 
-  // Use localized query since it depends on api directly or migrate to Facturas hook if shared
-  const { data: proveedores = [] } = useQuery({
-    queryKey: ['proveedores-search', proveedorSearch],
-    queryFn:  () => proveedorSearch.length >= 2 ? api.get(`/api/clientes/search?q=${proveedorSearch}`).then(r => r.data) : [],
-    enabled: proveedorSearch.length >= 2,
+  // ── Clientes (tipo === 1 = proveedores) ──────────────────────────────────
+  const { data: todosClientes = [] } = useQuery({
+    queryKey: ['clientes'],
+    queryFn: getClientes,
+    staleTime: 1000 * 60 * 5,
   });
 
-  const { data: productos = [] } = useQuery({
-    queryKey: ['productos-search', productoSearch],
-    queryFn:  () => productoSearch.length >= 1 ? api.get(`/api/productos/search?q=${productoSearch}`).then(r => r.data) : [],
-    enabled: productoSearch.length >= 1,
+  const proveedores = useMemo(() => {
+    const soloProveedores = todosClientes.filter(c => c.tipo === 1);
+    if (!proveedorSearch.trim()) return soloProveedores;
+    const q = proveedorSearch.toLowerCase();
+    return soloProveedores.filter(c => c.nombre.toLowerCase().includes(q));
+  }, [todosClientes, proveedorSearch]);
+
+  // ── Productos ────────────────────────────────────────────────────────────
+  const { data: todosProductos = [] } = useQuery({
+    queryKey: ['productos'],
+    queryFn: getProductos,
+    staleTime: 1000 * 60 * 5,
   });
 
+  const productos = useMemo(() => {
+    if (!productoSearch.trim()) return [];
+    const q = productoSearch.toLowerCase();
+    return todosProductos.filter(p =>
+      p.descripcion?.toLowerCase().includes(q) ||
+      String(p.productoId).includes(q)
+    );
+  }, [todosProductos, productoSearch]);
+
+  // ── Lógica del form ──────────────────────────────────────────────────────
   const detalles = watch('detalles');
-  const total = detalles.reduce((s, d) => s + parseFloat(d.cantidad||0) * parseFloat(d.costo||0), 0);
+  const total = detalles.reduce(
+    (s, d) => s + parseFloat(d.cantidad || 0) * parseFloat(d.costo || 0), 0
+  );
 
   const agregarProducto = (p) => {
-    append({
-      productoId:  p.productoId,
-      descripcion: p.descripcion,
-      cantidad:    1,
-      costo:       p.costo || 0,
-    });
+    const yaExiste = fields.findIndex(f => f.productoId === p.productoId);
+    if (yaExiste !== -1) {
+      toast.error('Ese producto ya fue agregado');
+      return;
+    }
+    append({ productoId: p.productoId, descripcion: p.descripcion, cantidad: 1, costo: p.costo || 0 });
     setProductoSearch('');
   };
 
   const closeWithConfirm = () => {
-    if (isDirty || detalles?.length > 0 || proveedorSel || proveedorSearch || productoSearch) setConfirmCancel(true);
+    if (isDirty || detalles?.length > 0 || proveedorSel || proveedorSearch || productoSearch)
+      setConfirmCancel(true);
     else onClose();
   };
 
@@ -81,6 +103,8 @@ export function NuevaCompraModal({ onClose }) {
 
           <form onSubmit={handleSubmit(submit)} className="space-y-5">
             <div className="grid grid-cols-3 gap-4">
+
+              {/* ── Proveedor ── */}
               <div className="relative">
                 <label className="label">Proveedor (opcional)</label>
                 {proveedorSel ? (
@@ -90,15 +114,24 @@ export function NuevaCompraModal({ onClose }) {
                   </div>
                 ) : (
                   <>
-                    <input className="input" placeholder="Buscar proveedor..."
-                      value={proveedorSearch} onChange={e => setProveedorSearch(e.target.value)} />
-                    {proveedores.length > 0 && (
-                      <div className="absolute z-20 w-full mt-1 rounded-lg border shadow-lg overflow-hidden"
-                        style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                    <input
+                      className="input"
+                      placeholder="Buscar proveedor..."
+                      value={proveedorSearch}
+                      onChange={e => setProveedorSearch(e.target.value)}
+                    />
+                    {proveedorSearch.length >= 2 && proveedores.length > 0 && (
+                      <div
+                        className="absolute z-20 w-full mt-1 rounded-lg border shadow-lg overflow-hidden"
+                        style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                      >
                         {proveedores.map(p => (
-                          <button key={p.clienteId} type="button"
+                          <button
+                            key={p.clienteId}
+                            type="button"
                             className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--bg-tertiary)]"
-                            onClick={() => { setProveedorSel(p); setProveedorSearch(''); }}>
+                            onClick={() => { setProveedorSel(p); setProveedorSearch(''); }}
+                          >
                             {p.nombre}
                           </button>
                         ))}
@@ -108,6 +141,7 @@ export function NuevaCompraModal({ onClose }) {
                 )}
               </div>
 
+              {/* ── Tipo de pago ── */}
               <div>
                 <label className="label">Tipo de pago</label>
                 <select className="input" {...register('tipoPago')}>
@@ -117,6 +151,7 @@ export function NuevaCompraModal({ onClose }) {
                 </select>
               </div>
 
+              {/* ── Estado ── */}
               <div>
                 <label className="label">Estado</label>
                 <select className="input" {...register('estado')}>
@@ -126,20 +161,29 @@ export function NuevaCompraModal({ onClose }) {
               </div>
             </div>
 
+            {/* ── Buscador de productos ── */}
             <div>
               <label className="label">Agregar productos</label>
               <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2"
-                  style={{ color: 'var(--text-muted)' }} />
-                <input className="input pl-8" placeholder="Buscar por nombre o código..."
-                  value={productoSearch} onChange={e => setProductoSearch(e.target.value)} />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+                <input
+                  className="input pl-8"
+                  placeholder="Buscar por nombre o código..."
+                  value={productoSearch}
+                  onChange={e => setProductoSearch(e.target.value)}
+                />
                 {productos.length > 0 && (
-                  <div className="absolute z-20 w-full mt-1 rounded-lg border shadow-lg overflow-hidden"
-                    style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
+                  <div
+                    className="absolute z-20 w-full mt-1 rounded-lg border shadow-lg overflow-hidden"
+                    style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}
+                  >
                     {productos.map(p => (
-                      <button key={p.productoId} type="button"
+                      <button
+                        key={p.productoId}
+                        type="button"
                         className="w-full text-left px-4 py-3 hover:bg-[var(--bg-tertiary)] transition-colors"
-                        onClick={() => agregarProducto(p)}>
+                        onClick={() => agregarProducto(p)}
+                      >
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium">{p.descripcion}</span>
                           <div className="flex items-center gap-2">
@@ -159,6 +203,7 @@ export function NuevaCompraModal({ onClose }) {
               </div>
             </div>
 
+            {/* ── Tabla de detalles ── */}
             {fields.length > 0 ? (
               <div className="tbl-wrap">
                 <table className="tbl">
@@ -181,19 +226,24 @@ export function NuevaCompraModal({ onClose }) {
                           <td>
                             <NumInput
                               className="input text-center py-1.5 px-2 text-sm w-24"
-                              {...register(`detalles.${i}.cantidad`)} />
+                              {...register(`detalles.${i}.cantidad`)}
+                            />
                           </td>
                           <td>
                             <NumInput
                               className="input text-right py-1.5 px-2 text-sm w-32"
-                              {...register(`detalles.${i}.costo`)} />
+                              {...register(`detalles.${i}.costo`)}
+                            />
                           </td>
                           <td className="text-right font-semibold text-sm tabular-nums">
                             {fmt(cant * costo)}
                           </td>
                           <td>
-                            <button type="button" onClick={() => remove(i)}
-                              className="btn-ghost btn-icon btn-sm text-red-400 hover:text-red-600">×</button>
+                            <button
+                              type="button"
+                              onClick={() => remove(i)}
+                              className="btn-ghost btn-icon btn-sm text-red-400 hover:text-red-600"
+                            >×</button>
                           </td>
                         </tr>
                       );
@@ -210,6 +260,7 @@ export function NuevaCompraModal({ onClose }) {
               </div>
             )}
 
+            {/* ── Total ── */}
             {fields.length > 0 && (
               <div className="flex justify-end">
                 <div className="w-64">
@@ -223,9 +274,14 @@ export function NuevaCompraModal({ onClose }) {
               </div>
             )}
 
+            {/* ── Acciones ── */}
             <div className="flex gap-3 pt-1">
               <button type="button" onClick={closeWithConfirm} className="btn-secondary flex-1">Cancelar</button>
-              <button type="submit" disabled={createMutation.isPending || fields.length === 0} className="btn-primary flex-1">
+              <button
+                type="submit"
+                disabled={createMutation.isPending || fields.length === 0}
+                className="btn-primary flex-1"
+              >
                 {createMutation.isPending ? 'Guardando...' : 'Registrar compra'}
               </button>
             </div>
@@ -233,6 +289,7 @@ export function NuevaCompraModal({ onClose }) {
         </div>
       </div>
 
+      {/* ── Confirm cancel ── */}
       {confirmCancel && (
         <div className="modal-overlay">
           <div className="modal-box max-w-sm">

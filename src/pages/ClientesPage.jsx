@@ -7,8 +7,16 @@ import { ClienteModal } from '../components/features/clientes/ClienteModal';
 
 const TIPO = ['Regular', 'Crédito', 'Mayorista'];
 
+const TIPO_ENTIDAD = [
+  'Cliente',
+  'Proveedor',
+  'Ambos',
+];
+
+
 export function ClientesPage() {
   const { puedeVer, puedeAcceder } = usePermiso();
+  const [filtroEntidad, setFiltroEntidad] = useState('todos');
 
   // Verificar acceso a Clientes
   if (!puedeVer('verClientes')) {
@@ -26,9 +34,9 @@ export function ClientesPage() {
     )
   }
 
-  const [search, setSearch]   = useState('');
-  const [filtro, setFiltro]   = useState('todos');
-  const [modal, setModal]     = useState(null);
+  const [search, setSearch] = useState('');
+  const [filtro, setFiltro] = useState('todos');
+  const [modal, setModal] = useState(null);
 
   const { data: clientes = [], isLoading } = useClientes();
   const toggleMutation = useToggleEstadoCliente();
@@ -36,7 +44,19 @@ export function ClientesPage() {
   const list = clientes.filter(c => {
     const q = search.toLowerCase();
     const matchQ = !q || c.nombre.toLowerCase().includes(q) || c.telefono?.includes(q) || c.cedula?.includes(q);
-    const matchF = filtro === 'todos' || (filtro === 'activos' && c.estado === 1) || (filtro === 'inactivos' && c.estado === 0);
+    const matchF =
+      filtro === 'todos' ||
+      (filtro === 'activos' && c.estado === 1) ||
+      (filtro === 'inactivos' && c.estado === 0);
+
+    const matchEntidad =
+      filtroEntidad === 'todos' ||
+      (filtroEntidad === 'clientes' &&
+        (c.tipoEntidad === 0 || c.tipoEntidad === 2)) ||
+      (filtroEntidad === 'proveedores' &&
+        (c.tipoEntidad === 1 || c.tipoEntidad === 2));
+
+    return matchQ && matchF && matchEntidad;
     return matchQ && matchF;
   });
 
@@ -56,9 +76,9 @@ export function ClientesPage() {
 
       <div className="grid grid-cols-3 gap-3">
         {[
-          ['Total',     clientes.length,                         'var(--text-primary)'],
-          ['Activos',   clientes.filter(c=>c.estado===1).length, '#22c55e'],
-          ['Inactivos', clientes.filter(c=>c.estado===0).length, 'var(--text-muted)'],
+          ['Total', clientes.length, 'var(--text-primary)'],
+          ['Activos', clientes.filter(c => c.estado === 1).length, '#22c55e'],
+          ['Inactivos', clientes.filter(c => c.estado === 0).length, 'var(--text-muted)'],
         ].map(([l, v, color]) => (
           <div key={l} className="card text-center py-3">
             <p className="text-xl font-extrabold" style={{ color }}>{v}</p>
@@ -73,14 +93,25 @@ export function ClientesPage() {
           <input className="input pl-8 w-64" placeholder="Buscar nombre, teléfono, cédula..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
+         <select
+          className="input w-44"
+          value={filtroEntidad}
+          onChange={(e) => setFiltroEntidad(e.target.value)}
+        >
+          <option value="todos">Todas las entidades</option>
+          <option value="clientes">Clientes</option>
+          <option value="proveedores">Proveedores</option>
+        </select>
+
         <div className="flex gap-1.5">
-          {['todos','activos','inactivos'].map(f => (
+          {['todos', 'activos', 'inactivos'].map(f => (
             <button key={f} onClick={() => setFiltro(f)}
               className={filtro === f ? 'btn-primary btn-sm capitalize' : 'btn-secondary btn-sm capitalize'}>
               {f}
             </button>
           ))}
         </div>
+       
       </div>
 
       <div className="tbl-wrap">
@@ -91,6 +122,7 @@ export function ClientesPage() {
               <th>Contacto</th>
               <th>Cédula / RNC</th>
               <th>Tipo</th>
+              <th>Entidad</th>
               <th>Crédito</th>
               <th>Estado</th>
               <th></th>
@@ -122,40 +154,55 @@ export function ClientesPage() {
                 </td>
                 <td>
                   <div className="space-y-1">
-                    {c.telefono && <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}><Phone size={11}/>{c.telefono}</div>}
-                    {c.email    && <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}><Mail size={11}/>{c.email}</div>}
+                    {c.telefono && <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}><Phone size={11} />{c.telefono}</div>}
+                    {c.email && <div className="flex items-center gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}><Mail size={11} />{c.email}</div>}
                   </div>
                 </td>
                 <td>
                   {c.cedula
-                    ? <div className="flex items-center gap-1 text-sm" style={{ color: 'var(--text-secondary)' }}><CreditCard size={13}/>{c.cedula}</div>
+                    ? <div className="flex items-center gap-1 text-sm" style={{ color: 'var(--text-secondary)' }}><CreditCard size={13} />{c.cedula}</div>
                     : <span style={{ color: 'var(--text-muted)' }}>—</span>
                   }
                 </td>
                 <td>
-                  <span className={c.tipo===1?'badge badge-blue':c.tipo===2?'badge badge-yellow':'badge badge-gray'}>
-                    {TIPO[c.tipo]||'Regular'}
+                  <span className={c.tipo === 1 ? 'badge badge-blue' : c.tipo === 2 ? 'badge badge-yellow' : 'badge badge-gray'}>
+                    {TIPO[c.tipo] || 'Regular'}
                   </span>
                 </td>
+
+                <td>
+                  <span
+                    className={
+                      c.tipoEntidad === 1
+                        ? 'badge badge-yellow'
+                        : c.tipoEntidad === 2
+                          ? 'badge badge-blue'
+                          : 'badge badge-green'
+                    }
+                  >
+                    {TIPO_ENTIDAD[c.tipoEntidad] || 'Cliente'}
+                  </span>
+                </td>
+
                 <td className="font-semibold text-sm">
-                  {c.credito>0 ? <span className="text-green-500">{fmt(c.credito)}</span> : <span style={{ color:'var(--text-muted)' }}>—</span>}
+                  {c.credito > 0 ? <span className="text-green-500">{fmt(c.credito)}</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                 </td>
                 <td>
-                  {c.estado===1
+                  {c.estado === 1
                     ? <span className="badge badge-green">Activo</span>
-                    : <span className="badge badge-gray">Inactivo</span>
+                    : <span className="badge badge-red">Inactivo</span>
                   }
                 </td>
                 <td>
                   <div className="flex gap-1">
                     <button onClick={() => setModal(c)} className="btn-ghost btn-icon btn-sm" title="Editar">
-                      <Edit2 size={14}/>
+                      <Edit2 size={14} />
                     </button>
                     <button onClick={() => toggleMutation.mutate(c.clienteId)} className="btn-ghost btn-icon btn-sm"
-                      title={c.estado===1?'Desactivar':'Activar'}>
-                      {c.estado===1
-                        ? <ToggleRight size={18} className="text-green-500"/>
-                        : <ToggleLeft  size={18} style={{ color:'var(--text-muted)' }}/>
+                      title={c.estado === 1 ? 'Desactivar' : 'Activar'}>
+                      {c.estado === 1
+                        ? <ToggleRight size={18} className="text-green-500" />
+                        : <ToggleLeft size={18} style={{ color: 'var(--text-muted)' }} />
                       }
                     </button>
                   </div>
