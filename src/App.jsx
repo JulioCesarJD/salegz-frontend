@@ -26,6 +26,7 @@ import { UsuariosPage }       from './pages/UsuariosPage'
 import { ConfiguracionPage }  from './pages/ConfiguracionPage'
 import { PerfilPage }         from './pages/PerfilPage'
 import { InventarioPage }     from './pages/InventarioPage'
+import { CuentaPorCobrarPage } from './pages/CuentaPorCobrarPage'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } })
 
@@ -82,6 +83,7 @@ export default function App() {
             <Route path="usuarios"      element={<AdminRoute><UsuariosPage /></AdminRoute>} />
             <Route path="configuracion" element={<AdminRoute><ConfiguracionPage /></AdminRoute>} />
             <Route path="perfil"        element={<PerfilPage />} />
+            <Route path="cuentaporcobrar"        element={<CuentaPorCobrarPage />} />
           </Route>
         </Routes>
       </BrowserRouter>
