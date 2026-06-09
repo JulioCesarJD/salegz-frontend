@@ -11,6 +11,7 @@ import { isAdminUser, isSuperAdmin } from '../../utils/auth'
 import clsx from 'clsx'
 import { useEffect, useState } from 'react'
 
+
 // 0 = Admin, 1 = Normal, 2 = Superadmin
 const NAV_TODOS = [
   { to: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard, permission: 'verDashboard' },
@@ -22,6 +23,7 @@ const NAV_TODOS = [
   { to: '/inventario',   label: 'Inventario',  icon: ClipboardList,   permission: 'verInventario' },
   { to: '/categorias',   label: 'Categorías',  icon: Tag,             permission: 'verCategorias' },
   { to: '/cuadres',      label: 'Cuadres',     icon: TrendingUp,      permission: 'verCuadres' },
+  { to: '/desclose',      label: 'Desclose',    icon: TrendingUp,      permission: 'verDesclose' },
 ]
 
 const NAV_SOLO_ADMIN = [

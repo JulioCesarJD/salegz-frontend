@@ -27,6 +27,9 @@ import { ConfiguracionPage }  from './pages/ConfiguracionPage'
 import { PerfilPage }         from './pages/PerfilPage'
 import { InventarioPage }     from './pages/InventarioPage'
 
+import DesclosePage from './pages/DesclosePage'
+
+
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } })
 
 function AdminRoute({ children }) {
@@ -78,6 +81,7 @@ export default function App() {
             <Route path="compras"       element={<AdminRoute><ComprasPage /></AdminRoute>} />
             <Route path="gastos"        element={<AdminRoute><GastosPage /></AdminRoute>} />
             <Route path="cuadres"       element={<CuadresPage />} />
+            <Route path="desclose"      element={<DesclosePage />} />
             <Route path="reportes"      element={<AdminRoute><ReportesPage /></AdminRoute>} />
             <Route path="usuarios"      element={<AdminRoute><UsuariosPage /></AdminRoute>} />
             <Route path="configuracion" element={<AdminRoute><ConfiguracionPage /></AdminRoute>} />
