@@ -3,7 +3,7 @@ import {
   LayoutDashboard, FileText, Users, Package,
   Tag, ShoppingCart, DollarSign, TrendingUp,
   Settings, LogOut, Zap, ChevronLeft, ChevronRight,
-  ClipboardList, UserCircle, Menu, X,
+  ClipboardList, UserCircle, Menu, X, HandCoins, 
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { usePermiso } from '../../hooks/usePermiso'
@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react'
 const NAV_TODOS = [
   { to: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard, permission: 'verDashboard' },
   { to: '/facturas',     label: 'Facturas',    icon: FileText,        permission: 'verFacturas' },
+  { to: '/cuentaporcobrar',      label: 'Cuenta/Cobrar',     icon: HandCoins ,      permission: 'verCuentaPorCobrar' },
   { to: '/cotizaciones', label: 'Cotizaciones', icon: ClipboardList,   permission: 'verCotizaciones' },
   { to: '/clientes',     label: 'Clientes',    icon: Users,           permission: 'verClientes' },
   { divider: true },
