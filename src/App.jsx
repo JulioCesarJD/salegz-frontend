@@ -27,6 +27,12 @@ import { ConfiguracionPage }  from './pages/ConfiguracionPage'
 import { PerfilPage }         from './pages/PerfilPage'
 import { InventarioPage }     from './pages/InventarioPage'
 import { CuentaPorCobrarPage } from './pages/CuentaPorCobrarPage'
+import { CuentasPagarPage }   from './pages/CuentasPagarPage'
+import { OrdenesPage }        from './pages/OrdenesPage'
+import { NotasCreditoPage }   from './pages/NotasCreditoPage'
+import { NcfPage }            from './pages/NcfPage'
+import { AuditoriaPage }      from './pages/AuditoriaPage'
+import { FiscalPage }         from './pages/FiscalPage'
 
 import DesclosePage from './pages/DesclosePage'
 
@@ -88,6 +94,12 @@ export default function App() {
             <Route path="configuracion" element={<AdminRoute><ConfiguracionPage /></AdminRoute>} />
             <Route path="perfil"        element={<PerfilPage />} />
             <Route path="cuentaporcobrar"        element={<CuentaPorCobrarPage />} />
+            <Route path="cuentas-pagar"          element={<CuentasPagarPage />} />
+            <Route path="ordenes"                element={<OrdenesPage />} />
+            <Route path="notas-credito"          element={<NotasCreditoPage />} />
+            <Route path="ncf"                    element={<AdminRoute><NcfPage /></AdminRoute>} />
+            <Route path="auditoria"              element={<AdminRoute><AuditoriaPage /></AdminRoute>} />
+            <Route path="fiscal"                 element={<AdminRoute><FiscalPage /></AdminRoute>} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -39,7 +39,7 @@ export const useCreateGasto = (onSuccessCallback) => {
   return useMutation({
     mutationFn: gastosService.createGasto,
     onSuccess: () => {
-      qc.invalidateQueries(['gastos']);
+      qc.invalidateQueries({ queryKey: ['gastos'] });
       toast.success('Gasto registrado');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -52,8 +52,8 @@ export const useCreateConsumo = (onSuccessCallback) => {
   return useMutation({
     mutationFn: gastosService.createConsumo,
     onSuccess: () => {
-      qc.invalidateQueries(['consumos-gastos']);
-      qc.invalidateQueries(['consumos-search']);
+      qc.invalidateQueries({ queryKey: ['consumos-gastos'] });
+      qc.invalidateQueries({ queryKey: ['consumos-search'] });
       toast.success('Concepto creado');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -66,8 +66,8 @@ export const useActualizarConsumo = (onSuccessCallback) => {
   return useMutation({
     mutationFn: ({ consumosGastosId, data }) => gastosService.updateConsumo(consumosGastosId, data),
     onSuccess: () => {
-      qc.invalidateQueries(['consumos-gastos']);
-      qc.invalidateQueries(['consumos-search']);
+      qc.invalidateQueries({ queryKey: ['consumos-gastos'] });
+      qc.invalidateQueries({ queryKey: ['consumos-search'] });
       toast.success('Concepto actualizado');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -80,8 +80,8 @@ export const useActualizarGasto = (onSuccessCallback) => {
   return useMutation({
     mutationFn: ({ gastosId, data }) => gastosService.updateGasto(gastosId, data),
     onSuccess: () => {
-      qc.invalidateQueries(['gastos']);
-      qc.invalidateQueries(['gasto']);
+      qc.invalidateQueries({ queryKey: ['gastos'] });
+      qc.invalidateQueries({ queryKey: ['gasto'] });
       toast.success('Gasto actualizado');
       if (onSuccessCallback) onSuccessCallback();
     },

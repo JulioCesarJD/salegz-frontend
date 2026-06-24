@@ -14,7 +14,7 @@ export const useCreateProducto = (onSuccessCallback) => {
   return useMutation({
     mutationFn: productosService.createProducto,
     onSuccess: () => {
-      qc.invalidateQueries(['productos']);
+      qc.invalidateQueries({ queryKey: ['productos'] });
       toast.success('Producto creado');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -27,7 +27,7 @@ export const useUpdateProducto = (onSuccessCallback) => {
   return useMutation({
     mutationFn: productosService.updateProducto,
     onSuccess: () => {
-      qc.invalidateQueries(['productos']);
+      qc.invalidateQueries({ queryKey: ['productos'] });
       toast.success('Producto actualizado');
       if (onSuccessCallback) onSuccessCallback();
     },

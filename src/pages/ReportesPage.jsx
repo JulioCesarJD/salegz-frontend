@@ -322,6 +322,67 @@ export function ReportesPage() {
           </div>
         </div>
       )}
+
+      <div>
+        <h2 className="text-sm font-bold uppercase tracking-wide mb-3" style={{ color: "var(--text-muted)" }}>
+          Cuentas por pagar
+        </h2>
+        <CxpReport desde={desde} hasta={hasta} />
+      </div>
+
+      <div>
+        <h2 className="text-sm font-bold uppercase tracking-wide mb-3" style={{ color: "var(--text-muted)" }}>
+          Productos más vendidos
+        </h2>
+        <ProductosTopReport desde={desde} hasta={hasta} />
+      </div>
+    </div>
+  );
+}
+
+function CxpReport({ desde, hasta }) {
+  const { data: cxp = [] } = useQuery({ queryKey: ['r-cxp'], queryFn: () => api.get('/api/reportes/cuentas-pagar').then(r => r.data) });
+  if (cxp.length === 0) return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Sin datos</p>;
+  return (
+    <div className="tbl-wrap">
+      <table className="tbl">
+        <thead><tr><th>Proveedor</th><th className="text-right">Total</th><th className="text-right">Pagado</th><th className="text-right">Pendiente</th></tr></thead>
+        <tbody>
+          {cxp.slice(0, 10).map((c, i) => (
+            <tr key={c.cuentaPagarId || i}>
+              <td className="font-medium">{c.proveedor || c.nombreProveedor || '—'}</td>
+              <td className="text-right">{fmt(c.monto)}</td>
+              <td className="text-right text-green-500">{fmt(c.pagado || 0)}</td>
+              <td className="text-right font-bold text-red-500">{fmt((c.monto || 0) - (c.pagado || 0))}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ProductosTopReport({ desde, hasta }) {
+  const { data: tops = [] } = useQuery({
+    queryKey: ['r-productos-top', desde, hasta],
+    queryFn: () => api.get(`/api/reportes/productos-mas-vendidos?desde=${desde}&hasta=${hasta}&top=10`).then(r => r.data),
+  });
+  if (!tops || tops.length === 0) return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Sin datos</p>;
+  return (
+    <div className="tbl-wrap">
+      <table className="tbl">
+        <thead><tr><th>#</th><th>Producto</th><th className="text-right">Cantidad</th><th className="text-right">Total</th></tr></thead>
+        <tbody>
+          {tops.map((p, i) => (
+            <tr key={p.productoId || i}>
+              <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
+              <td className="font-medium">{p.descripcion || p.nombre}</td>
+              <td className="text-right font-semibold">{p.cantidadVendida || p.cantidad}</td>
+              <td className="text-right font-semibold">{fmt(p.totalVentas || p.total)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

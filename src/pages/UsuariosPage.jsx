@@ -33,26 +33,6 @@ function ConfirmDeleteModal({ usuario, onClose, onConfirm, busy }) {
   )
 }
 
-const handleTogglePermiso = (key, grupo) => {
-  const nuevoValor = !vals[key]
-
-  setValue(key, nuevoValor)
-
-  // 🔹 Si activa "crear", también activa "ver"
-  if (key.startsWith('crear') && nuevoValor) {
-    const verKey = key.replace('crear', 'ver')
-    setValue(verKey, true)
-  }
-
-  // 🔹 Si desactiva "ver", apaga todo el grupo
-  if (key.startsWith('ver') && !nuevoValor) {
-    const permisosGrupo = GRUPOS_PERMISOS
-      .find(g => g.grupo === grupo)?.permisos || []
-
-    permisosGrupo.forEach(p => setValue(p.key, false))
-  }
-}
-
 // ── Modal usuario ────────────────────────────────────────────────
 function UsuarioModal({ usuario, onClose, onSave, busy, currentUser }) {
   const isEdit = !!usuario?.usuarioId
@@ -200,11 +180,10 @@ const GRUPOS_PERMISOS = [
     ]
   },
   {
-    grupo: 'Clientes & Productos',
+    grupo: 'Clientes',
     permisos: [
       { key: 'verClientes', label: 'Ver clientes' },
       { key: 'crearClientes', label: 'Crear/editar clientes' },
-      { key: 'verProductos', label: 'Ver productos' }
     ]
   },
   {
@@ -221,7 +200,74 @@ const GRUPOS_PERMISOS = [
       { key: 'editarInventario', label: 'Editar inventario' },
       { key: 'eliminarInventario', label: 'Eliminar inventario' }
     ]
-  }
+  },
+  {
+    grupo: 'Productos',
+    permisos: [
+      { key: 'verProductos', label: 'Ver productos' },
+      { key: 'crearProductos', label: 'Crear/editar productos' },
+    ]
+  },
+  {
+    grupo: 'Dashboard',
+    permisos: [
+      { key: 'verDashboard', label: 'Ver dashboard' },
+    ]
+  },
+  {
+    grupo: 'Categorías',
+    permisos: [
+      { key: 'verCategorias', label: 'Ver categorías' },
+    ]
+  },
+  {
+    grupo: 'Cuentas por Cobrar',
+    permisos: [
+      { key: 'verCuentaPorCobrar', label: 'Ver cuentas por cobrar' },
+    ]
+  },
+  {
+    grupo: 'Cuentas por Pagar',
+    permisos: [
+      { key: 'verCuentasPagar', label: 'Ver cuentas por pagar' },
+    ]
+  },
+  {
+    grupo: 'Órdenes',
+    permisos: [
+      { key: 'verOrdenes', label: 'Ver órdenes' },
+    ]
+  },
+  {
+    grupo: 'Notas de Crédito',
+    permisos: [
+      { key: 'verNotasCredito', label: 'Ver notas de crédito' },
+    ]
+  },
+  {
+    grupo: 'NCF',
+    permisos: [
+      { key: 'verNcf', label: 'Ver NCF' },
+    ]
+  },
+  {
+    grupo: 'Auditoría',
+    permisos: [
+      { key: 'verAuditoria', label: 'Ver auditoría' },
+    ]
+  },
+  {
+    grupo: 'Fiscal',
+    permisos: [
+      { key: 'verFiscal', label: 'Ver fiscal' },
+    ]
+  },
+  {
+    grupo: 'Desglose',
+    permisos: [
+      { key: 'verDesclose', label: 'Ver desglose' },
+    ]
+  },
 ]
 
 function PermisosModal({ usuario, onClose, onSave, busy }) {
@@ -255,24 +301,52 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
     keys.forEach(k => setValue(k, !allOn))
   }
 
+  const handleTogglePermiso = (key, grupo) => {
+    const nuevoValor = !vals[key]
+    setValue(key, nuevoValor)
+    if (key.startsWith('crear') && nuevoValor) {
+      const verKey = key.replace('crear', 'ver')
+      setValue(verKey, true)
+    }
+    if (key.startsWith('ver') && !nuevoValor) {
+      const permisosGrupo = GRUPOS_PERMISOS.find(g => g.grupo === grupo)?.permisos || []
+      permisosGrupo.forEach(p => setValue(p.key, false))
+    }
+  }
+
   const submit = (data) => {
     onSave({
       usuarioId: usuario.usuarioId,
-      verFacturas: !!data.verFacturas,
-      crearFacturas: !!data.crearFacturas,
-      cancelarFacturas: !!data.cancelarFacturas,
-      verCotizaciones: !!data.verCotizaciones,
+      verFacturas:       !!data.verFacturas,
+      crearFacturas:     !!data.crearFacturas,
+      cancelarFacturas:  !!data.cancelarFacturas,
+      verCotizaciones:   !!data.verCotizaciones,
       crearCotizaciones: !!data.crearCotizaciones,
-      verCompras: !!data.verCompras,
-      crearCompras: !!data.crearCompras,
-      verGastos: !!data.verGastos,
-      crearGastos: !!data.crearGastos,
-      verCuadres: !!data.verCuadres,
-      crearCuadres: !!data.crearCuadres,
-      verClientes: !!data.verClientes,
-      crearClientes: !!data.crearClientes,
-      verProductos: !!data.verProductos,
-      verReportes: !!data.verReportes,
+      verCompras:        !!data.verCompras,
+      crearCompras:      !!data.crearCompras,
+      verGastos:         !!data.verGastos,
+      crearGastos:       !!data.crearGastos,
+      verCuadres:        !!data.verCuadres,
+      crearCuadres:      !!data.crearCuadres,
+      verClientes:       !!data.verClientes,
+      crearClientes:     !!data.crearClientes,
+      verProductos:      !!data.verProductos,
+      crearProductos:    !!data.crearProductos,
+      verReportes:       !!data.verReportes,
+      verDashboard:      !!data.verDashboard,
+      verCategorias:     !!data.verCategorias,
+      verCuentaPorCobrar: !!data.verCuentaPorCobrar,
+      verCuentasPagar:   !!data.verCuentasPagar,
+      verOrdenes:        !!data.verOrdenes,
+      verNotasCredito:   !!data.verNotasCredito,
+      verNcf:            !!data.verNcf,
+      verAuditoria:      !!data.verAuditoria,
+      verFiscal:         !!data.verFiscal,
+      verDesclose:       !!data.verDesclose,
+      verInventario:     !!data.verInventario,
+      crearInventario:   !!data.crearInventario,
+      editarInventario:  !!data.editarInventario,
+      eliminarInventario: !!data.eliminarInventario,
     })
   }
 

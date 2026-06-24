@@ -14,7 +14,7 @@ export const useCreateCliente = (onSuccessCallback) => {
   return useMutation({
     mutationFn: clientesService.createCliente,
     onSuccess: () => {
-      qc.invalidateQueries(['clientes']);
+      qc.invalidateQueries({ queryKey: ['clientes'] });
       toast.success('Cliente creado');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -27,7 +27,7 @@ export const useUpdateCliente = (onSuccessCallback) => {
   return useMutation({
     mutationFn: clientesService.updateCliente,
     onSuccess: () => {
-      qc.invalidateQueries(['clientes']);
+      qc.invalidateQueries({ queryKey: ['clientes'] });
       toast.success('Cliente actualizado');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -39,7 +39,7 @@ export const useToggleEstadoCliente = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: clientesService.toggleEstadoCliente,
-    onSuccess: () => qc.invalidateQueries(['clientes']),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['clientes'] }),
     onError: (e) => toast.error(e.response?.data?.message || 'Error al cambiar estado'),
   });
 };

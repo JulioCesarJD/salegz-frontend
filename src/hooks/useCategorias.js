@@ -14,7 +14,7 @@ export const useCreateCategoria = (onSuccessCallback) => {
   return useMutation({
     mutationFn: categoriasService.createCategoria,
     onSuccess: () => {
-      qc.invalidateQueries(['categorias']);
+      qc.invalidateQueries({ queryKey: ['categorias'] });
       toast.success('Categoría creada');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -27,7 +27,7 @@ export const useUpdateCategoria = (onSuccessCallback) => {
   return useMutation({
     mutationFn: categoriasService.updateCategoria,
     onSuccess: () => {
-      qc.invalidateQueries(['categorias']);
+      qc.invalidateQueries({ queryKey: ['categorias'] });
       toast.success('Categoría actualizada');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -40,7 +40,7 @@ export const useDeleteCategoria = (onSuccessCallback) => {
   return useMutation({
     mutationFn: categoriasService.deleteCategoria,
     onSuccess: () => {
-      qc.invalidateQueries(['categorias']);
+      qc.invalidateQueries({ queryKey: ['categorias'] });
       toast.success('Categoría eliminada');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -52,7 +52,7 @@ export const useToggleEstadoCategoria = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: categoriasService.toggleEstadoCategoria,
-    onSuccess: () => qc.invalidateQueries(['categorias']),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categorias'] }),
     onError: (e) => toast.error(e.response?.data?.message || 'Error al cambiar estado'),
   });
 };
