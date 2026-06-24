@@ -22,6 +22,18 @@ const DEFAULT_PERMISOS = {
   verDashboard:      true,
   verInventario:     true,
   verCategorias:     true,
+  verCuentaPorCobrar: true,
+  verCuentasPagar:   false,
+  verOrdenes:        true,
+  verNotasCredito:   true,
+  verNcf:            false,
+  verAuditoria:      false,
+  verFiscal:         false,
+  verDesclose:       true,
+  crearProductos:    false,
+  crearInventario:   false,
+  editarInventario:  false,
+  eliminarInventario: false,
 }
 
 export const usePermisosStore = create((set, get) => ({

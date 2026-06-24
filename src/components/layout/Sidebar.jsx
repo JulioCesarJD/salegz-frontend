@@ -3,7 +3,8 @@ import {
   LayoutDashboard, FileText, Users, Package,
   Tag, ShoppingCart, DollarSign, TrendingUp,
   Settings, LogOut, Zap, ChevronLeft, ChevronRight,
-  ClipboardList, UserCircle, Menu, X, HandCoins, 
+  ClipboardList, UserCircle, Menu, X, HandCoins,
+  Receipt, CreditCard, BookOpen, ShieldAlert, FileBarChart,
 } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 import { usePermiso } from '../../hooks/usePermiso'
@@ -14,23 +15,30 @@ import { useEffect, useState } from 'react'
 
 // 0 = Admin, 1 = Normal, 2 = Superadmin
 const NAV_TODOS = [
-  { to: '/dashboard',    label: 'Dashboard',   icon: LayoutDashboard, permission: 'verDashboard' },
-  { to: '/facturas',     label: 'Facturas',    icon: FileText,        permission: 'verFacturas' },
-  { to: '/cuentaporcobrar',      label: 'Cuenta/Cobrar',     icon: HandCoins ,      permission: 'verCuentaPorCobrar' },
-  { to: '/cotizaciones', label: 'Cotizaciones', icon: ClipboardList,   permission: 'verCotizaciones' },
-  { to: '/clientes',     label: 'Clientes',    icon: Users,           permission: 'verClientes' },
+  { to: '/dashboard',    label: 'Dashboard',      icon: LayoutDashboard, permission: 'verDashboard' },
+  { to: '/facturas',     label: 'Facturas',       icon: FileText,        permission: 'verFacturas' },
+  { to: '/cuentaporcobrar', label: 'Cuenta/Cobrar', icon: HandCoins,     permission: 'verCuentaPorCobrar' },
+  { to: '/cuentas-pagar', label: 'Cuenta/Pagar',   icon: DollarSign,     permission: 'verCuentasPagar' },
+  { to: '/ordenes',      label: 'Órdenes',        icon: ShoppingCart,    permission: 'verOrdenes' },
+  { to: '/notas-credito', label: 'Notas Crédito',  icon: FileText,       permission: 'verNotasCredito' },
+  { to: '/cotizaciones', label: 'Cotizaciones',   icon: ClipboardList,   permission: 'verCotizaciones' },
+  { to: '/clientes',     label: 'Clientes',       icon: Users,           permission: 'verClientes' },
   { divider: true },
-  { to: '/productos',    label: 'Productos',   icon: Package,         permission: 'verProductos' },
-  { to: '/inventario',   label: 'Inventario',  icon: ClipboardList,   permission: 'verInventario' },
-  { to: '/categorias',   label: 'Categorías',  icon: Tag,             permission: 'verCategorias' },
-  { to: '/cuadres',      label: 'Cuadres',     icon: TrendingUp,      permission: 'verCuadres' },
-  { to: '/desclose',      label: 'Desclose',    icon: TrendingUp,      permission: 'verDesclose' },
+  { to: '/productos',    label: 'Productos',      icon: Package,         permission: 'verProductos' },
+  { to: '/inventario',   label: 'Inventario',     icon: ClipboardList,   permission: 'verInventario' },
+  { to: '/categorias',   label: 'Categorías',     icon: Tag,             permission: 'verCategorias' },
+  { to: '/cuadres',      label: 'Cuadres',        icon: TrendingUp,      permission: 'verCuadres' },
+  { to: '/desclose',     label: 'Desclose',       icon: FileText,        permission: 'verDesclose' },
 ]
 
 const NAV_SOLO_ADMIN = [
   { divider: true },
   { to: '/compras',       label: 'Compras',       icon: ShoppingCart, permission: 'verCompras', adminOnly: true },
   { to: '/gastos',        label: 'Gastos',        icon: DollarSign,   permission: 'verGastos', adminOnly: true },
+  { divider: true },
+  { to: '/ncf',           label: 'NCF',            icon: FileText,     permission: 'verNcf', adminOnly: true },
+  { to: '/auditoria',     label: 'Auditoría',      icon: FileText,     permission: 'verAuditoria', adminOnly: true },
+  { to: '/fiscal',        label: 'Fiscal',         icon: TrendingUp,   permission: 'verFiscal', adminOnly: true },
   { divider: true },
   { to: '/reportes',      label: 'Reportes',      icon: TrendingUp,   permission: 'verReportes', adminOnly: true },
   { to: '/configuracion', label: 'Configuración', icon: Settings,     permission: null, adminOnly: true },

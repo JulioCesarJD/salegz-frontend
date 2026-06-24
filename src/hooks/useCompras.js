@@ -22,7 +22,7 @@ export const useCreateCompra = (onSuccessCallback) => {
   return useMutation({
     mutationFn: comprasService.createCompra,
     onSuccess: () => {
-      qc.invalidateQueries(['compras']);
+      qc.invalidateQueries({ queryKey: ['compras'] });
       toast.success('Compra registrada');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -35,7 +35,7 @@ export const useSaldarCompra = (onSuccessCallback) => {
   return useMutation({
     mutationFn: comprasService.saldarCompra,
     onSuccess: () => {
-      qc.invalidateQueries(['compras']);
+      qc.invalidateQueries({ queryKey: ['compras'] });
       toast.success('Pago registrado');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -48,7 +48,7 @@ export const useCancelarCompra = () => {
   return useMutation({
     mutationFn: comprasService.cancelarCompra,
     onSuccess: () => {
-      qc.invalidateQueries(['compras']);
+      qc.invalidateQueries({ queryKey: ['compras'] });
       toast.success('Compra cancelada');
     },
     onError: (e) => toast.error(e.response?.data?.message || 'Error al cancelar'),

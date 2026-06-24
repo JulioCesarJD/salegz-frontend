@@ -52,7 +52,7 @@ export const useCreateFactura = (onSuccessCallback) => {
     mutationFn: facturasService.createFactura,
 
     onSuccess: (res, variables) => {
-      qc.invalidateQueries(['facturas']);
+      qc.invalidateQueries({ queryKey: ['facturas'] });
 
       toast.success('Factura creada');
 
@@ -73,7 +73,7 @@ export const useSaldarFactura = (onSuccessCallback) => {
   return useMutation({
     mutationFn: facturasService.saldarFactura,
     onSuccess: () => {
-      qc.invalidateQueries(['facturas']);
+      qc.invalidateQueries({ queryKey: ['facturas'] });
       toast.success('¡Cobro realizado!');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -86,7 +86,7 @@ export const useCancelarFactura = () => {
   return useMutation({
     mutationFn: facturasService.cancelarFactura,
     onSuccess: () => {
-      qc.invalidateQueries(['facturas']);
+      qc.invalidateQueries({ queryKey: ['facturas'] });
       toast.success('Factura cancelada');
     },
     onError: (e) => toast.error(e.response?.data?.message || 'Error'),

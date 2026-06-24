@@ -30,7 +30,7 @@ export const useCreateCuadre = (onSuccessCallback) => {
   return useMutation({
     mutationFn: createCuadre,
     onSuccess: () => {
-      qc.invalidateQueries(['cuadres']);
+      qc.invalidateQueries({ queryKey: ['cuadres'] });
       toast.success('Cuadre guardado');
       if (onSuccessCallback) onSuccessCallback();
     },

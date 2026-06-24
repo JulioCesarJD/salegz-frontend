@@ -22,24 +22,11 @@ export const useCreateMovimientoInventario = (onSuccessCallback) => {
   return useMutation({
     mutationFn: inventarioService.createMovimientoInventario,
     onSuccess: () => {
-      qc.invalidateQueries(['movimientosInventario']);
+      qc.invalidateQueries({ queryKey: ['movimientosInventario'] });
       toast.success('Movimiento de inventario registrado');
       if (onSuccessCallback) onSuccessCallback();
     },
     onError: (e) => toast.error(e.response?.data?.message || 'Error al crear movimiento'),
-  });
-};
-
-export const useUpdateMovimientoInventario = (onSuccessCallback) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: inventarioService.updateMovimientoInventario,
-    onSuccess: () => {
-      qc.invalidateQueries(['movimientosInventario']);
-      toast.success('Movimiento de inventario actualizado');
-      if (onSuccessCallback) onSuccessCallback();
-    },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al actualizar movimiento'),
   });
 };
 
@@ -48,7 +35,7 @@ export const useDeleteMovimientoInventario = () => {
   return useMutation({
     mutationFn: inventarioService.deleteMovimientoInventario,
     onSuccess: () => {
-      qc.invalidateQueries(['movimientosInventario']);
+      qc.invalidateQueries({ queryKey: ['movimientosInventario'] });
       toast.success('Movimiento de inventario eliminado');
     },
     onError: (e) => toast.error(e.response?.data?.message || 'Error al eliminar movimiento'),

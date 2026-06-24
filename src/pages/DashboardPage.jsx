@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { DollarSign, Users, AlertTriangle, TrendingUp, Package, ShoppingBag, Calendar } from 'lucide-react'
+import { DollarSign, Users, AlertTriangle, TrendingUp, Package, ShoppingBag, Calendar, HandCoins, ShoppingCart } from 'lucide-react'
 import api from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 
@@ -48,10 +48,14 @@ export function DashboardPage() {
     queryKey: ['ventas-mes', desde, hoy],
     queryFn: () => api.get(`/api/reportes/ventas?desde=${desde}&hasta=${hoy}`).then(r => r.data),
   })
-  const { data: cxc = [] } = useQuery({ queryKey: ['cxc'], queryFn: () => api.get('/api/reportes/cuentas-cobrar').then(r => r.data) })
+  const { data: cxc = [] } = useQuery({ queryKey: ['cxc'], queryFn: () => api.get('/api/reportes/cuentascobrar').then(r => r.data) })
   const { data: stockBajo = [] } = useQuery({ queryKey: ['stock-bajo'], queryFn: () => api.get('/api/productos/stock-bajo').then(r => r.data) })
   const { data: clientes = [] } = useQuery({ queryKey: ['clientes'], queryFn: () => api.get('/api/clientes').then(r => r.data) })
   const { data: inv } = useQuery({ queryKey: ['inv-resumen'], queryFn: () => api.get('/api/reportes/inventario/resumen').then(r => r.data) })
+  // const { data: cxp = [] } = useQuery({ queryKey: ['cxp'], queryFn: () => api.get('/api/reportes/cuentas-pagar').then(r => r.data) })
+  const { data: cxp = [] } = useQuery({ queryKey: ['cxp'], queryFn: () => api.get('/api/reportes/cxp').then(r => r.data) })
+  
+  const { data: ordenesCount = 0 } = useQuery({ queryKey: ['ordenes-count'], queryFn: () => api.get('/api/ordenes?estado=0').then(r => r.data?.length || 0) })
 
   const margen = inv?.valorTotalPrecio1 > 0
     ? (((inv.valorTotalPrecio1 - inv.valorTotalCosto) / inv.valorTotalPrecio1) * 100).toFixed(1)
@@ -179,6 +183,19 @@ export function DashboardPage() {
             icon={Users}
             color="blue"
           />
+        </div>
+      </div>
+
+      {/* ── Nuevos módulos ── */}
+      <div>
+        <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-2 sm:mb-3" style={{ color: "var(--text-muted)" }}>
+          Otros indicadores
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <StatCard title="Cuentas por pagar" value={cxp.length} sub="Pendientes" icon={HandCoins} color="yellow" />
+          <StatCard title="Órdenes pendientes" value={ordenesCount} sub="Sin procesar" icon={ShoppingCart} color="blue" />
+          <StatCard title="Productos" value={inv?.totalProductos || 0} sub="En inventario" icon={Package} color="indigo" />
+          <StatCard title="Facturas hoy" value={ventasHoy?.cantidadFacturas || 0} sub="Transacciones" icon={TrendingUp} color="green" />
         </div>
       </div>
 

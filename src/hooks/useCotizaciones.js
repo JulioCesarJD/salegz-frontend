@@ -22,7 +22,7 @@ export const useCreateCotizacion = (onSuccessCallback) => {
   return useMutation({
     mutationFn: cotizService.createCotizacion,
     onSuccess: () => {
-      qc.invalidateQueries(['cotizaciones']);
+      qc.invalidateQueries({ queryKey: ['cotizaciones'] });
       toast.success('Cotización creada');
       if (onSuccessCallback) onSuccessCallback();
     },
@@ -35,8 +35,8 @@ export const useConvertirCotizacion = (onSuccessCallback) => {
   return useMutation({
     mutationFn: cotizService.convertirCotizacion,
     onSuccess: (res) => {
-      qc.invalidateQueries(['cotizaciones']);
-      qc.invalidateQueries(['facturas']);
+      qc.invalidateQueries({ queryKey: ['cotizaciones'] });
+      qc.invalidateQueries({ queryKey: ['facturas'] });
       toast.success(`¡Factura #${res.data?.facturaId} creada exitosamente! 🎉`);
       if (onSuccessCallback) onSuccessCallback(res);
     },
@@ -53,8 +53,8 @@ export const useActualizarCotizacion = (onSuccessCallback) => {
       cotizService.updateCotizacion(cotizacionId, data),
 
     onSuccess: () => {
-      qc.invalidateQueries(['cotizaciones']);
-      qc.invalidateQueries(['cotizacion']);  
+      qc.invalidateQueries({ queryKey: ['cotizaciones'] });
+      qc.invalidateQueries({ queryKey: ['cotizacion'] });  
       toast.success('Cotización actualizada');
       if (onSuccessCallback) onSuccessCallback();
     },
