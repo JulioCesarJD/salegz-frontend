@@ -2,13 +2,17 @@ import React, { useState } from 'react';
 import { Plus, Eye, TrendingUp, Printer } from 'lucide-react';
 import { usePermiso } from '../hooks/usePermiso';
 import { useCuadres } from '../hooks/useCuadres';
-import { ESTADO_CUADRE } from '../constants/cuadres';
 import { fmt } from '../utils/format';
 import { NuevoCuadreModal } from '../components/features/cuadres/NuevoCuadreModal';
 import { CuadreDetalle } from '../components/features/cuadres/CuadreDetalle';
 import * as commonService from '../services/commonService';
 import * as cuadresService from '../services/cuadresService';
 import { printCuadre } from '../utils/print/printCuadre';
+
+const fechaCorta = (fecha) => {
+  if (!fecha) return '—';
+  return new Date(fecha).toLocaleDateString('es-DO');
+};
 
 export function CuadresPage() {
   const { puedeVer, puedeAcceder } = usePermiso();
@@ -35,6 +39,9 @@ export function CuadresPage() {
 
   // Hook abstracto
   const { data: cuadres = [], isLoading } = useCuadres(desde, hasta);
+
+  const totalEfectivo = cuadres.reduce((s, c) => s + (Number(c.totalEfectivo) || 0), 0);
+  const totalTarjeta = cuadres.reduce((s, c) => s + (Number(c.totalTarjeta) || 0), 0);
 
   const handleImprimir = async (cuadreId) => {
     try {
@@ -65,13 +72,13 @@ export function CuadresPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          ['Total',          cuadres.length,                                 'var(--text-primary)'],
-          ['Aprobados',      cuadres.filter(c=>c.estadoCuadre===1).length,   '#22c55e'           ],
-          ['Con diferencia', cuadres.filter(c=>c.estadoCuadre===2).length,   '#ef4444'           ],
-          ['Pendientes',     cuadres.filter(c=>c.estadoCuadre===0).length,   '#f59e0b'           ],
+          ['Total',       cuadres.length,                            'var(--text-primary)'],
+          ['Efectivo',    fmt(totalEfectivo),                        '#22c55e'           ],
+          ['Tarjetas',    fmt(totalTarjeta),                         '#3b82f6'           ],
+          ['Canceladas',  cuadres.reduce((s, c) => s + (Number(c.cantidadCancelado) || 0), 0), '#ef4444'],
         ].map(([l, v, color]) => (
           <div key={l} className="card text-center py-3">
-            <p className="text-xl font-extrabold" style={{ color }}>{v}</p>
+            <p className="text-xl font-extrabold tabular-nums break-words" style={{ color }}>{v}</p>
             <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{l}</p>
           </div>
         ))}
@@ -96,11 +103,11 @@ export function CuadresPage() {
               <th className="w-12">#</th>
               <th className="w-40">Cajero</th>
               <th className="w-32">Fecha</th>
-              <th className="w-28 text-right">Fondo ini.</th>
-              <th className="w-28 text-right">Ventas sis.</th>
+              <th className="w-28 text-right">Efectivo</th>
+              <th className="w-28 text-right">Cheque</th>
+              <th className="w-28 text-right">Tarjeta</th>
+              <th className="w-28 text-right">Transfer.</th>
               <th className="w-28 text-right">Total</th>
-              <th className="w-28 text-right">Diferencia</th>
-              <th className="w-28">Estado</th>
               <th className="w-14">Acciones</th>
             </tr>
           </thead>
@@ -112,32 +119,28 @@ export function CuadresPage() {
                     <TrendingUp size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
                     <p style={{ color: 'var(--text-muted)' }}>No hay cuadres</p>
                   </td></tr>
-                : cuadres.map(c => {
-                    const dif      = c.diferencia || 0
-                    const difColor = dif === 0 ? 'var(--text-muted)' : dif > 0 ? '#3b82f6' : '#ef4444'
-                    return (
-                      <tr key={c.cuadreId}>
-                        <td className="font-bold text-sm" style={{ color: 'var(--brand)' }}>#{c.cuadreId}</td>
-                        <td className="font-medium text-sm truncate">{c.usuario}</td>
-                        <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>{new Date(c.fecha).toLocaleDateString('es-DO')}</td>
-                        <td className="text-start text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmt(c.fondoInicial)}</td>
-                        <td className="text-start text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmt(c.ventasSistema)}</td>
-                        <td className="text-start font-semibold text-sm tabular-nums">{fmt(c.total)}</td>
-                        <td className="text-start text-sm tabular-nums font-semibold" style={{ color: difColor }}>
-                          {dif === 0 ? '—' : `${dif > 0 ? '+' : ''}${fmt(Math.abs(dif))}`}
-                        </td>
-                        <td>{ESTADO_CUADRE[c.estadoCuadre ?? 0]}</td>
-                        <td>
+                : cuadres.map(c => (
+                    <tr key={c.cuadreId}>
+                      <td className="font-bold text-sm" style={{ color: 'var(--brand)' }}>#{c.cuadreId}</td>
+                      <td className="font-medium text-sm truncate">{c.usuarioNombre || '—'}</td>
+                      <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>{fechaCorta(c.fecha)}</td>
+                      <td className="text-start text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmt(c.totalEfectivo)}</td>
+                      <td className="text-start text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmt(c.totalCheque)}</td>
+                      <td className="text-start text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmt(c.totalTarjeta)}</td>
+                      <td className="text-start text-sm tabular-nums" style={{ color: 'var(--text-secondary)' }}>{fmt(c.totalTransaccion)}</td>
+                      <td className="text-start font-semibold text-sm tabular-nums">{fmt(c.total)}</td>
+                      <td>
+                        <div className="flex gap-1">
                           <button onClick={() => setModal({ ver: c.cuadreId })} className="btn-ghost btn-icon btn-sm" title="Ver">
                             <Eye size={14} />
                           </button>
                           <button onClick={() => handleImprimir(c.cuadreId)} className="btn-ghost btn-icon btn-sm" title="Imprimir">
                             <Printer size={14} />
                           </button>
-                        </td>
-                      </tr>
-                    )
-                  })
+                        </div>
+                      </td>
+                    </tr>
+                  ))
             }
           </tbody>
         </table>

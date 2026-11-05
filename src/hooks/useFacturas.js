@@ -1,37 +1,34 @@
-// hooks/useFacturas.js - Actualizado
+// hooks/useFacturas.js
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as facturasService from '../services/facturasService';
-import * as commonService from '../services/commonService'; 
+import * as commonService from '../services/commonService';
 
-// Mapeo de tipo de comprobante a valor numérico
+/**
+ * La API no filtra por tipo de comprobante; se conserva el mapa para no
+ * romper los componentes existentes hasta la Fase 4.
+ */
 export const TIPO_COMPROBANTE_MAP = {
-  'consumidorFinal': 0,
-  'fiscal': 1,
-  'regimenEspecial': 2,
-  'gubernamental': 3,
+  consumidorFinal: 0,
+  fiscal: 1,
+  regimenEspecial: 2,
+  gubernamental: 3,
 };
 
-// --- Queries ---
-
+/**
+ * Firma conservada por compatibilidad con las pantallas actuales.
+ * Filtros reales enviados: estado, fechaDesde, fechaHasta, search.
+ * `soloMios`, `usuarioId` y `tipoComprobante` no existen en la API.
+ */
 export const useFacturas = (estado, desde, hasta, soloMios, usuarioId, tipoComprobante) => {
   return useQuery({
-    queryKey: ['facturas', estado, desde, hasta, soloMios, tipoComprobante],
-    queryFn: () => {
-      // Convertir el tipo de comprobante de string a número
-      let tipoComprobanteValue = null;
-      if (tipoComprobante && TIPO_COMPROBANTE_MAP[tipoComprobante] !== undefined) {
-        tipoComprobanteValue = TIPO_COMPROBANTE_MAP[tipoComprobante];
-      }
-      
-      return facturasService.getFacturas(
-        estado, 
-        desde, 
-        hasta, 
-        soloMios ? usuarioId : null,
-        tipoComprobanteValue
-      );
-    },
+    queryKey: ['facturas', estado, desde, hasta, soloMios, usuarioId, tipoComprobante],
+    queryFn: () =>
+      facturasService.getFacturas({
+        estado,
+        fechaDesde: desde,
+        fechaHasta: hasta,
+      }),
   });
 };
 
@@ -43,8 +40,6 @@ export const useFactura = (facturaId) => {
   });
 };
 
-// --- Mutaciones (resto igual) ---
-
 export const useCreateFactura = (onSuccessCallback) => {
   const qc = useQueryClient();
 
@@ -53,7 +48,6 @@ export const useCreateFactura = (onSuccessCallback) => {
 
     onSuccess: (res, variables) => {
       qc.invalidateQueries({ queryKey: ['facturas'] });
-
       toast.success('Factura creada');
 
       if (onSuccessCallback) {
@@ -61,23 +55,22 @@ export const useCreateFactura = (onSuccessCallback) => {
       }
     },
 
-    onError: (e) =>
-      toast.error(
-        e.response?.data?.message || 'Error al crear factura'
-      ),
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al crear factura'),
   });
 };
 
+/** Registra un abono por el saldo pendiente (POST /abonar). */
 export const useSaldarFactura = (onSuccessCallback) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: facturasService.saldarFactura,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['facturas'] });
-      toast.success('¡Cobro realizado!');
+      qc.invalidateQueries({ queryKey: ['factura'] });
+      toast.success('Cobro realizado');
       if (onSuccessCallback) onSuccessCallback();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al cobrar'),
   });
 };
 
@@ -89,13 +82,13 @@ export const useCancelarFactura = () => {
       qc.invalidateQueries({ queryKey: ['facturas'] });
       toast.success('Factura cancelada');
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al cancelar'),
   });
 };
 
 // --- Common Queries ---
 
-export const useSearchClientes = (queryParam) => {
+export const useSearchClientes = (queryParam = '') => {
   return useQuery({
     queryKey: ['clientes-search', queryParam],
     queryFn: () => commonService.searchClientes(queryParam),
@@ -103,7 +96,7 @@ export const useSearchClientes = (queryParam) => {
   });
 };
 
-export const useSearchProductos = (queryParam) => {
+export const useSearchProductos = (queryParam = '') => {
   return useQuery({
     queryKey: ['productos-search', queryParam],
     queryFn: () => commonService.searchProductos(queryParam),
@@ -112,23 +105,19 @@ export const useSearchProductos = (queryParam) => {
 };
 
 export const useEmpresaInfo = () => {
-  const em = useQuery({ queryKey: ['empresa'], queryFn: commonService.getEmpresa });
-  const ct = useQuery({ queryKey: ['controles'], queryFn: commonService.getControlesEmpresa });
+  const em = useQuery({ queryKey: ['empresa'], queryFn: () => commonService.getEmpresa() });
+  const ct = useQuery({ queryKey: ['controles'], queryFn: () => commonService.getControlesEmpresa() });
   return { empresa: em.data, control: ct.data, isLoading: em.isLoading || ct.isLoading };
 };
 
+/** @deprecated La API no expone PUT /api/facturas/{id}. */
 export const useActualizarFactura = (onSuccess) => {
-  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ facturaId, data }) => facturasService.actualizarFactura(facturaId, data),
-    
+    mutationFn: facturasService.actualizarFactura,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['facturas'] });
-      queryClient.invalidateQueries({ queryKey: ['factura'] });
       toast.success('Factura actualizada');
       onSuccess?.();
     },
-    
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al actualizar factura'),
+    onError: (e) => toast.error(e.response?.data?.message || e.message || 'Error al actualizar factura'),
   });
 };

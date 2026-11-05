@@ -1,21 +1,31 @@
-import api from '../lib/api';
+import api from '../lib/api'
+import { notSupported, unwrapPaged } from './_helpers'
 
+const BASE = '/api/notas-credito'
+
+/** GET /api/notas-credito — hoy devuelve una lista vacía. */
 export const getNotasCredito = async () => {
-  const res = await api.get('/api/notas-credito');
-  return res.data;
-};
+  const { data } = await api.get(BASE)
+  return unwrapPaged(data)
+}
 
-export const getNotaCreditoById = async (id) => {
-  const res = await api.get(`/api/notas-credito/${id}`);
-  return res.data;
-};
+/**
+ * La API no expone GET /api/notas-credito/{id}.
+ * Se resuelve sobre el listado para no inventar un endpoint.
+ */
+export const getNotaCreditoById = async (notaCreditoId) => {
+  const items = await getNotasCredito()
+  return items.find((n) => n.notaCreditoId === Number(notaCreditoId)) ?? null
+}
 
+/** POST /api/notas-credito — hoy responde `{ message: "ok" }`. */
 export const createNotaCredito = async (data) => {
-  const res = await api.post('/api/notas-credito', data);
-  return res.data;
-};
+  const { data: result } = await api.post(BASE, data)
+  return result
+}
 
-export const cancelarNotaCredito = async (id) => {
-  const res = await api.patch(`/api/notas-credito/${id}/cancelar`);
-  return res.data;
-};
+/** La API no expone cancelación de notas de crédito. */
+export const cancelarNotaCredito = () =>
+  notSupported('Cancelar una nota de crédito')
+
+export { BASE as NOTA_CREDITO_ENDPOINTS_BASE }

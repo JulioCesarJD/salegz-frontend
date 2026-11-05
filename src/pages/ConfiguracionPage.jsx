@@ -1,57 +1,120 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { useEffect } from 'react'
-import api from '../lib/api'
-import toast from 'react-hot-toast'
+import { useAuthStore } from '../store/authStore'
+import { useEmpresa, useUpdateEmpresa } from '../hooks/useEmpresas'
+import { useControles, useUpdateControles } from '../hooks/useControles'
 import { NumInput } from '../components/common/NumInput'
 
-export function ConfiguracionPage() {
-  const qc = useQueryClient()
+const intOrNull = (value) => {
+  if (value === '' || value === undefined || value === null) return null
+  const parsed = parseInt(value, 10)
+  return Number.isNaN(parsed) ? null : parsed
+}
 
-  const { data: empresa } = useQuery({ queryKey: ['empresa'],  queryFn: () => api.get('/api/empresa').then(r => r.data) })
-  const { data: control } = useQuery({ queryKey: ['controles'], queryFn: () => api.get('/api/empresa/control').then(r => r.data) })
+const numberOrNull = (value) => {
+  if (value === '' || value === undefined || value === null) return null
+  const parsed = parseFloat(value)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
+const toDateInput = (value) => (value ? String(value).slice(0, 10) : '')
+
+export function ConfiguracionPage() {
+  const { user } = useAuthStore()
+  const empresaId = user?.empresaId ?? null
+
+  const { data: empresa } = useEmpresa(empresaId)
+  const { data: control } = useControles(empresaId)
+
+  const updateEmpresa = useUpdateEmpresa()
+  const updateControl = useUpdateControles(empresaId)
 
   const { register: regE, handleSubmit: handleE, reset: resetE } = useForm()
   const { register: regC, handleSubmit: handleC, reset: resetC } = useForm()
 
-  useEffect(() => { if (empresa) resetE(empresa) }, [empresa])
-  useEffect(() => { if (control) resetC(control)  }, [control])
+  useEffect(() => {
+    if (!empresa) return
+    resetE({
+      nombre: empresa.nombre ?? '',
+      rnc: empresa.rnc ?? '',
+      correo: empresa.correo ?? '',
+      telefono: empresa.telefono ?? '',
+      direccion: empresa.direccion ?? '',
+      cantUsuario: empresa.cantUsuario ?? '',
+      montoPlan: empresa.montoPlan ?? '',
+      estado: empresa.estado ?? 0,
+      fechaExpiracion: toDateInput(empresa.fechaExpiracion),
+    })
+  }, [empresa, resetE])
 
-  const saveEmpresa = useMutation({
-    mutationFn: (d) => api.put('/api/empresa', d),
-    onSuccess:  () => { qc.invalidateQueries(['empresa']); toast.success('Empresa actualizada') },
-    onError:    (e) => toast.error(e.response?.data?.message || 'Error'),
-  })
+  useEffect(() => {
+    if (!control) return
+    resetC({
+      itbis: control.itbis ?? 18,
+      tamanoFactura: control.tamanoFactura ?? 0,
+      limiteDiaPago: control.limiteDiaPago ?? '',
+      limiteConteoFiscal: control.limiteConteoFiscal ?? '',
+      limiteConteoConsumo: control.limiteConteoConsumo ?? '',
+      limiteConteoRegimenEspecial: control.limiteConteoRegimenEspecial ?? '',
+      limiteConteoGubernamental: control.limiteConteoGubernamental ?? '',
+      tipoOrden: control.tipoOrden ?? 0,
+      mostrarTelefonoCliente: Boolean(control.mostrarTelefonoCliente),
+      mostrarDireccionCliente: Boolean(control.mostrarDireccionCliente),
+    })
+  }, [control, resetC])
 
-  const saveControl = useMutation({
-    mutationFn: (d) => api.put('/api/empresa/control', d),
-    onSuccess:  () => { qc.invalidateQueries(['controles']); toast.success('Configuración guardada') },
-    onError:    (e) => toast.error(e.response?.data?.message || 'Error'),
-  })
+  const submitEmpresa = (d) => {
+    if (!empresaId) return
+    updateEmpresa.mutate({
+      empresaId,
+      data: {
+        nombre: d.nombre,
+        rnc: d.rnc || null,
+        correo: d.correo || null,
+        telefono: d.telefono || null,
+        direccion: d.direccion || null,
+        cantUsuario: intOrNull(d.cantUsuario),
+        montoPlan: numberOrNull(d.montoPlan),
+        estado: intOrNull(d.estado) ?? 0,
+        fechaExpiracion: d.fechaExpiracion || null,
+      },
+    })
+  }
 
-  const submitEmpresa = (d) =>
-    saveEmpresa.mutate({ ...d, tipoEmpresa: parseInt(d.tipoEmpresa) });
-  const submitControl = (d) =>
-    saveControl.mutate({
-      ...d,
-      controlesId: control?.controlesId,  
-      empresaId: control?.empresaId,  
-      limiteDiaPago: parseInt(d.limiteDiaPago || 0),
-      tamanoFactura: parseInt(d.tamanoFactura || 0),
-      itbs: parseFloat(d.itbs || 18),
-      limiteConteoFiscal: parseInt(d.limiteConteoFiscal || 0),
-      limiteConteoConsumo: parseInt(d.limiteConteoConsumo || 0),
-      itbsCalculo: parseInt(d.itbsCalculo || 0),
-      mostrarTelefonoCliente:
-        d.mostrarTelefonoCliente === true ||
-        d.mostrarTelefonoCliente === "true",
-      mostrarDireccionCliente:
-        d.mostrarDireccionCliente === true ||
-        d.mostrarDireccionCliente === "true",
-      tipoOrden: parseInt(d.tipoOrden || 0),
-      limiteConteoRegimenEspecial: parseInt(d.limiteConteoRegimenEspecial || 0),
-      limiteConteoGubernamental: parseInt(d.limiteConteoGubernamental || 0),
-    });
+  const submitControl = (d) => {
+    if (!empresaId) return
+    updateControl.mutate({
+      itbis: numberOrNull(d.itbis) ?? 18,
+      tamanoFactura: intOrNull(d.tamanoFactura),
+      limiteDiaPago: intOrNull(d.limiteDiaPago),
+      limiteConteoFiscal: intOrNull(d.limiteConteoFiscal),
+      limiteConteoConsumo: intOrNull(d.limiteConteoConsumo),
+      limiteConteoRegimenEspecial: intOrNull(d.limiteConteoRegimenEspecial),
+      limiteConteoGubernamental: intOrNull(d.limiteConteoGubernamental),
+      tipoOrden: intOrNull(d.tipoOrden),
+      mostrarTelefonoCliente: d.mostrarTelefonoCliente ? 1 : 0,
+      mostrarDireccionCliente: d.mostrarDireccionCliente ? 1 : 0,
+    })
+  }
+
+  if (!empresaId) {
+    return (
+      <div className="space-y-6 max-w-3xl">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">Configuración</h1>
+            <p className="page-sub">Datos de la empresa y parámetros del sistema</p>
+          </div>
+        </div>
+        <div className="card">
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Tu usuario no está asociado a una empresa. Un SuperAdmin debe asignarte una
+            empresa para poder configurar estos datos.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -76,10 +139,11 @@ export function ConfiguracionPage() {
               <input className="input" placeholder="000-00000-0" {...regE('rnc')} />
             </div>
             <div>
-              <label className="label">Tipo</label>
-              <select className="input" {...regE('tipoEmpresa')}>
-                <option value={0}>Física</option>
-                <option value={1}>Jurídica</option>
+              <label className="label">Estado</label>
+              <select className="input" {...regE('estado')}>
+                <option value={0}>Inactiva</option>
+                <option value={1}>Mes gratis</option>
+                <option value={2}>Plan activo</option>
               </select>
             </div>
             <div>
@@ -95,21 +159,21 @@ export function ConfiguracionPage() {
               <input className="input" {...regE('direccion')} />
             </div>
             <div>
-              <label className="label">WhatsApp</label>
-              <input className="input" {...regE('whatsapp')} />
+              <label className="label">Cantidad de usuarios</label>
+              <NumInput decimals={false} className="input" {...regE('cantUsuario')} />
             </div>
             <div>
-              <label className="label">Instagram</label>
-              <input className="input" placeholder="@usuario" {...regE('instagram')} />
+              <label className="label">Monto del plan</label>
+              <NumInput className="input" {...regE('montoPlan')} />
             </div>
-            <div>
-              <label className="label">Facebook</label>
-              <input className="input" {...regE('facebook')} />
+            <div className="col-span-2">
+              <label className="label">Fecha de expiración</label>
+              <input type="date" className="input" {...regE('fechaExpiracion')} />
             </div>
           </div>
           <div className="flex justify-end pt-2">
-            <button type="submit" disabled={saveEmpresa.isPending} className="btn-primary">
-              {saveEmpresa.isPending ? 'Guardando...' : 'Guardar empresa'}
+            <button type="submit" disabled={updateEmpresa.isPending} className="btn-primary">
+              {updateEmpresa.isPending ? 'Guardando...' : 'Guardar empresa'}
             </button>
           </div>
         </form>
@@ -121,15 +185,8 @@ export function ConfiguracionPage() {
         <form onSubmit={handleC(submitControl)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">% ITBS</label>
-              <NumInput className="input" {...regC('itbs')} />
-            </div>
-            <div>
-              <label className="label">Cálculo ITBS</label>
-              <select className="input" {...regC('itbsCalculo')}>
-                <option value={0}>Incluido en precio</option>
-                <option value={1}>Agregado al precio</option>
-              </select>
+              <label className="label">% ITBIS</label>
+              <NumInput className="input" {...regC('itbis')} />
             </div>
             <div>
               <label className="label">Tamaño factura</label>
@@ -141,6 +198,10 @@ export function ConfiguracionPage() {
             <div>
               <label className="label">Límite días de pago</label>
               <NumInput decimals={false} className="input" {...regC('limiteDiaPago')} />
+            </div>
+            <div>
+              <label className="label">Tipo de orden</label>
+              <NumInput decimals={false} className="input" {...regC('tipoOrden')} />
             </div>
             <div>
               <label className="label">Límite NCF Fiscal</label>
@@ -174,8 +235,8 @@ export function ConfiguracionPage() {
             </div>
           </div>
           <div className="flex justify-end pt-2">
-            <button type="submit" disabled={saveControl.isPending} className="btn-primary">
-              {saveControl.isPending ? 'Guardando...' : 'Guardar configuración'}
+            <button type="submit" disabled={updateControl.isPending} className="btn-primary">
+              {updateControl.isPending ? 'Guardando...' : 'Guardar configuración'}
             </button>
           </div>
         </form>

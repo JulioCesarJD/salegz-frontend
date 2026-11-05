@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { DollarSign, TrendingUp, Package, AlertTriangle, FileText } from 'lucide-react'
+import { DollarSign, TrendingUp, Package, AlertTriangle, FileText, Users } from 'lucide-react'
 import { usePermiso } from '../hooks/usePermiso'
-import api from '../lib/api'
-
-const fmt = (v) => new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(v || 0)
+import { useVentasRango, useProductosMasVendidos, useInventarioBajoMinimo, useCxCPendientes, useGastosPeriodo } from '../hooks/useReportes'
+import { useProductos } from '../hooks/useProductos'
+import { localDate } from '../utils/date'
+import { fmt } from '../utils/format'
 
 function DateRange({ desde, hasta, onDesde, onHasta }) {
   return (
@@ -21,11 +21,25 @@ function DateRange({ desde, hasta, onDesde, onHasta }) {
   )
 }
 
-export function ReportesPage() {
-  const { puedeVer } = usePermiso();
+const sumar = (items = [], campo) =>
+  items.reduce((acc, item) => acc + (Number(item[campo]) || 0), 0)
 
-  // Verificar acceso a Reportes
-  if (!puedeVer('verReportes')) {
+export function ReportesPage() {
+  const { puedeVer } = usePermiso()
+  const puedeAcceder = puedeVer('verReportes')
+
+  const today = new Date()
+  const [desde, setDesde] = useState(localDate(new Date(today.getFullYear(), today.getMonth(), 1)))
+  const [hasta, setHasta] = useState(localDate(today))
+
+  const { data: ventas = [] } = useVentasRango(desde, hasta)
+  const { data: cxc = [] } = useCxCPendientes()
+  const { data: stockBajo = [] } = useInventarioBajoMinimo()
+  const { data: gastos = [] } = useGastosPeriodo(desde, hasta)
+  const { data: tops = [] } = useProductosMasVendidos(desde, hasta)
+  const { data: productos = [] } = useProductos({ pageSize: 1000 })
+
+  if (!puedeAcceder) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -40,17 +54,23 @@ export function ReportesPage() {
     )
   }
 
-  const today  = new Date()
-  const [desde, setDesde] = useState(new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0])
-  const [hasta, setHasta] = useState(today.toISOString().split('T')[0])
+  // ── Agregados reales ──
+  const totalVendido = sumar(ventas, 'total')
+  const totalItbis = sumar(ventas, 'itbis')
+  const totalFacturas = sumar(ventas, 'cantidad')
+  const totalPorCobrar = sumar(cxc, 'saldoPendiente')
+  const totalGastos = sumar(gastos, 'total')
 
-  const { data: ventas }        = useQuery({ queryKey: ['r-ventas', desde, hasta],    queryFn: () => api.get(`/api/reportes/ventas?desde=${desde}&hasta=${hasta}`).then(r => r.data) })
-  const { data: cxc = [] }      = useQuery({ queryKey: ['r-cxc'],                     queryFn: () => api.get('/api/reportes/cuentas-cobrar').then(r => r.data) })
-  const { data: inventario = [] }= useQuery({ queryKey: ['r-inventario'],              queryFn: () => api.get('/api/reportes/inventario').then(r => r.data) })
-  const { data: gastos }        = useQuery({ queryKey: ['r-gastos', desde, hasta],    queryFn: () => api.get(`/api/reportes/gastos?desde=${desde}&hasta=${hasta}`).then(r => r.data) })
-  const { data: invRes }        = useQuery({ queryKey: ['r-inv-resumen'],             queryFn: () => api.get('/api/reportes/inventario/resumen').then(r => r.data) })
-
-  const stockBajo = inventario.filter(p => p.stockBajo)
+  const inventario = productos.reduce(
+    (acc, p) => {
+      const cantidad = Number(p.cantidad) || 0
+      acc.totalProductos += 1
+      acc.valorCosto += cantidad * (Number(p.costo) || 0)
+      acc.valorPrecio1 += cantidad * (Number(p.precio1) || 0)
+      return acc
+    },
+    { totalProductos: 0, valorCosto: 0, valorPrecio1: 0 }
+  )
 
   return (
     <div className="space-y-6">
@@ -72,52 +92,52 @@ export function ReportesPage() {
       <div>
         <h2
           className="text-sm font-bold uppercase tracking-wide mb-3"
-          style={{ color: "var(--text-muted)" }}
+          style={{ color: 'var(--text-muted)' }}
         >
           Ventas del período
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {[
             {
-              label: "Total vendido",
-              value: fmt(ventas?.totalVentas),
-              color: "text-green-500",
-              bg: "bg-green-50  dark:bg-green-900/20",
+              label: 'Total vendido',
+              value: fmt(totalVendido),
+              color: 'text-green-500',
+              bg: 'bg-green-50  dark:bg-green-900/20',
               icon: DollarSign,
             },
             {
-              label: "Total cobrado",
-              value: fmt(ventas?.totalCobrado),
-              color: "text-blue-500",
-              bg: "bg-blue-50   dark:bg-blue-900/20",
+              label: 'ITBIS generado',
+              value: fmt(totalItbis),
+              color: 'text-purple-500',
+              bg: 'bg-purple-50 dark:bg-purple-900/20',
+              icon: DollarSign,
+            },
+            {
+              label: 'Facturas',
+              value: totalFacturas,
+              color: 'text-blue-500',
+              bg: 'bg-blue-50   dark:bg-blue-900/20',
+              icon: FileText,
+            },
+            {
+              label: 'Por cobrar',
+              value: fmt(totalPorCobrar),
+              color: 'text-yellow-500',
+              bg: 'bg-yellow-50 dark:bg-yellow-900/20',
               icon: TrendingUp,
             },
             {
-              label: "Por cobrar",
-              value: fmt(ventas?.totalPendiente),
-              color: "text-yellow-500",
-              bg: "bg-yellow-50 dark:bg-yellow-900/20",
-              icon: FileText,
+              label: 'Clientes con saldo',
+              value: cxc.length,
+              color: 'text-orange-500',
+              bg: 'bg-orange-50 dark:bg-orange-900/20',
+              icon: Users,
             },
             {
-              label: "ITBS generado",
-              value: fmt(ventas?.totalITBS),
-              color: "text-purple-500",
-              bg: "bg-purple-50 dark:bg-purple-900/20",
-              icon: DollarSign,
-            },
-            {
-              label: "Facturas activas",
-              value: ventas?.cantidadFacturas || 0,
-              color: "var(--text-primary)",
-              bg: "bg-gray-100 dark:bg-gray-800",
-              icon: FileText,
-            },
-            {
-              label: "Canceladas",
-              value: ventas?.facturasCanceladas || 0,
-              color: "text-red-500",
-              bg: "bg-red-50 dark:bg-red-900/20",
+              label: 'Días con ventas',
+              value: ventas.length,
+              color: 'var(--text-primary)',
+              bg: 'bg-gray-100 dark:bg-gray-800',
               icon: FileText,
             },
           ].map(({ label, value, color, bg, icon: Icon }) => (
@@ -126,7 +146,7 @@ export function ReportesPage() {
                 <Icon size={18} className={color} />
               </div>
               <div>
-                <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                   {label}
                 </p>
                 <p className={`text-lg font-extrabold tabular-nums ${color}`}>
@@ -142,7 +162,7 @@ export function ReportesPage() {
       <div>
         <h2
           className="text-sm font-bold uppercase tracking-wide mb-3"
-          style={{ color: "var(--text-muted)" }}
+          style={{ color: 'var(--text-muted)' }}
         >
           Gastos del período
         </h2>
@@ -152,27 +172,27 @@ export function ReportesPage() {
               <DollarSign size={18} className="text-red-500" />
             </div>
             <div>
-              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                 Total gastos
               </p>
               <p className="text-lg font-extrabold text-red-500 tabular-nums">
-                {fmt(gastos?.totalGastos)}
+                {fmt(totalGastos)}
               </p>
             </div>
           </div>
           <div className="card flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800">
-              <FileText size={18} style={{ color: "var(--text-muted)" }} />
+              <FileText size={18} style={{ color: 'var(--text-muted)' }} />
             </div>
             <div>
-              <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-                Registros
+              <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                Días con gastos
               </p>
               <p
                 className="text-lg font-extrabold tabular-nums"
-                style={{ color: "var(--text-primary)" }}
+                style={{ color: 'var(--text-primary)' }}
               >
-                {gastos?.cantidadGastos || 0}
+                {gastos.length}
               </p>
             </div>
           </div>
@@ -183,32 +203,32 @@ export function ReportesPage() {
       <div>
         <h2
           className="text-sm font-bold uppercase tracking-wide mb-3"
-          style={{ color: "var(--text-muted)" }}
+          style={{ color: 'var(--text-muted)' }}
         >
           Inventario
         </h2>
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="card">
-            <p className="text-xs mb-1" style={{ color: "var(--text-muted)" }}>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
               Valor a costo
             </p>
             <p
               className="text-xl font-extrabold tabular-nums"
-              style={{ color: "var(--text-primary)" }}
+              style={{ color: 'var(--text-primary)' }}
             >
-              {fmt(invRes?.valorTotalCosto)}
+              {fmt(inventario.valorCosto)}
             </p>
           </div>
           <div className="card">
-            <p className="text-xs mb-1" style={{ color: "var(--text-muted)" }}>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
               Valor a precio 1
             </p>
             <p className="text-xl font-extrabold text-green-500 tabular-nums">
-              {fmt(invRes?.valorTotalPrecio1)}
+              {fmt(inventario.valorPrecio1)}
             </p>
           </div>
           <div className="card">
-            <p className="text-xs mb-1" style={{ color: "var(--text-muted)" }}>
+            <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>
               Productos stock bajo
             </p>
             <p className="text-xl font-extrabold text-red-500">
@@ -223,10 +243,9 @@ export function ReportesPage() {
               <thead>
                 <tr>
                   <th>Producto</th>
-                  <th className="w-32">Categoría</th>
-                  <th className="w-20 text-right">Stock</th>
-                  <th className="w-20 text-right">Mínimo</th>
-                  <th className="w-32 text-right">Precio 1</th>
+                  <th className="w-24 text-right">Stock</th>
+                  <th className="w-24 text-right">Mínimo</th>
+                  <th className="w-28 text-right">Faltante</th>
                 </tr>
               </thead>
               <tbody>
@@ -243,20 +262,17 @@ export function ReportesPage() {
                         </span>
                       </div>
                     </td>
-                    <td>
-                      <span className="badge badge-gray">{p.categoria}</span>
-                    </td>
                     <td className="text-right font-bold text-red-500 tabular-nums">
                       {p.cantidad}
                     </td>
                     <td
                       className="text-right text-sm tabular-nums"
-                      style={{ color: "var(--text-muted)" }}
+                      style={{ color: 'var(--text-muted)' }}
                     >
                       {p.minimo}
                     </td>
                     <td className="text-right font-semibold text-sm tabular-nums">
-                      {fmt(p.precio1)}
+                      {Math.max((Number(p.minimo) || 0) - (Number(p.cantidad) || 0), 0)}
                     </td>
                   </tr>
                 ))}
@@ -271,49 +287,34 @@ export function ReportesPage() {
         <div>
           <h2
             className="text-sm font-bold uppercase tracking-wide mb-3"
-            style={{ color: "var(--text-muted)" }}
+            style={{ color: 'var(--text-muted)' }}
           >
-            Cuentas por cobrar{" "}
+            Cuentas por cobrar{' '}
             <span className="badge badge-yellow ml-2">{cxc.length}</span>
           </h2>
           <div className="tbl-wrap">
             <table className="tbl table-fixed w-full">
               <thead>
                 <tr>
-                  <th className="w-12">#</th>
-                  <th className="w-44">Cliente</th>
-                  <th className="w-28">Fecha</th>
-                  <th className="w-32 text-right">Total</th>
-                  <th className="w-32 text-right">Pagado</th>
-                  <th className="w-32 text-right">Pendiente</th>
+                  <th className="w-16">#</th>
+                  <th>Cliente</th>
+                  <th className="w-40 text-right">Saldo pendiente</th>
                 </tr>
               </thead>
               <tbody>
                 {cxc.map((c) => (
-                  <tr key={c.facturaId}>
+                  <tr key={c.clienteId}>
                     <td
                       className="font-bold text-sm"
-                      style={{ color: "var(--brand)" }}
+                      style={{ color: 'var(--brand)' }}
                     >
-                      #{c.facturaId}
+                      {c.clienteId}
                     </td>
                     <td className="font-medium text-sm truncate">
-                      {c.nombreCliente}
+                      {c.nombre || 'Cliente'}
                     </td>
-                    <td
-                      className="text-sm"
-                      style={{ color: "var(--text-secondary)" }}
-                    >
-                      {new Date(c.fecha).toLocaleDateString("es-DO")}
-                    </td>
-                    <td className="text-start font-semibold text-sm tabular-nums">
-                      {fmt(c.total)}
-                    </td>
-                    <td className="text-start text-sm text-green-500 tabular-nums">
-                      {fmt(c.pagado)}
-                    </td>
-                    <td className="text-start font-bold text-sm text-red-500 tabular-nums">
-                      {fmt(c.pendiente)}
+                    <td className="text-right font-bold text-sm text-red-500 tabular-nums">
+                      {fmt(c.saldoPendiente)}
                     </td>
                   </tr>
                 ))}
@@ -324,65 +325,29 @@ export function ReportesPage() {
       )}
 
       <div>
-        <h2 className="text-sm font-bold uppercase tracking-wide mb-3" style={{ color: "var(--text-muted)" }}>
-          Cuentas por pagar
-        </h2>
-        <CxpReport desde={desde} hasta={hasta} />
-      </div>
-
-      <div>
-        <h2 className="text-sm font-bold uppercase tracking-wide mb-3" style={{ color: "var(--text-muted)" }}>
+        <h2 className="text-sm font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--text-muted)' }}>
           Productos más vendidos
         </h2>
-        <ProductosTopReport desde={desde} hasta={hasta} />
+        {tops.length === 0 ? (
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Sin datos</p>
+        ) : (
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead><tr><th>#</th><th>Producto</th><th className="text-right">Cantidad</th><th className="text-right">Total</th></tr></thead>
+              <tbody>
+                {tops.slice(0, 10).map((p, i) => (
+                  <tr key={p.productoId || i}>
+                    <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
+                    <td className="font-medium">{p.descripcion}</td>
+                    <td className="text-right font-semibold">{p.cantidadVendida}</td>
+                    <td className="text-right font-semibold">{fmt(p.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
-  );
-}
-
-function CxpReport({ desde, hasta }) {
-  const { data: cxp = [] } = useQuery({ queryKey: ['r-cxp'], queryFn: () => api.get('/api/reportes/cuentas-pagar').then(r => r.data) });
-  if (cxp.length === 0) return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Sin datos</p>;
-  return (
-    <div className="tbl-wrap">
-      <table className="tbl">
-        <thead><tr><th>Proveedor</th><th className="text-right">Total</th><th className="text-right">Pagado</th><th className="text-right">Pendiente</th></tr></thead>
-        <tbody>
-          {cxp.slice(0, 10).map((c, i) => (
-            <tr key={c.cuentaPagarId || i}>
-              <td className="font-medium">{c.proveedor || c.nombreProveedor || '—'}</td>
-              <td className="text-right">{fmt(c.monto)}</td>
-              <td className="text-right text-green-500">{fmt(c.pagado || 0)}</td>
-              <td className="text-right font-bold text-red-500">{fmt((c.monto || 0) - (c.pagado || 0))}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function ProductosTopReport({ desde, hasta }) {
-  const { data: tops = [] } = useQuery({
-    queryKey: ['r-productos-top', desde, hasta],
-    queryFn: () => api.get(`/api/reportes/productos-mas-vendidos?desde=${desde}&hasta=${hasta}&top=10`).then(r => r.data),
-  });
-  if (!tops || tops.length === 0) return <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Sin datos</p>;
-  return (
-    <div className="tbl-wrap">
-      <table className="tbl">
-        <thead><tr><th>#</th><th>Producto</th><th className="text-right">Cantidad</th><th className="text-right">Total</th></tr></thead>
-        <tbody>
-          {tops.map((p, i) => (
-            <tr key={p.productoId || i}>
-              <td className="text-xs" style={{ color: 'var(--text-muted)' }}>{i + 1}</td>
-              <td className="font-medium">{p.descripcion || p.nombre}</td>
-              <td className="text-right font-semibold">{p.cantidadVendida || p.cantidad}</td>
-              <td className="text-right font-semibold">{fmt(p.totalVentas || p.total)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  )
 }

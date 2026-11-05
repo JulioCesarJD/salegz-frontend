@@ -1,27 +1,35 @@
 import React, { useState } from 'react';
  
 import { Banknote, CreditCard, ArrowRight, Receipt} from 'lucide-react';
-import { useAuthStore } from '../../../store/authStore';
 import { useSaldarFactura } from '../../../hooks/useFacturas';
 import { fmt } from '../../../utils/format';
 import { NumInput } from '../../common/NumInput';
 
+const METODO_PAGO_API = {
+  Efectivo: 1,
+  Cheque: 2,
+  Tarjeta: 3,
+  Transferencia: 4,
+};
+
 export function CobroModal({ factura, onClose }) {
-  const [monto, setMonto] = useState(factura.total); // Manejamos esto aún como numérico localmente, NumInput lo recibe y lo parseamos
-  const [tipoPago, setTipoPago] = useState(factura.tipoPago || 'Efectivo');
-  const { user } = useAuthStore();
-  
+  const saldo = factura.saldoPendiente ?? (factura.total - (factura.montoPagado || 0));
+  const [monto, setMonto] = useState(saldo);
+  const [tipoPago, setTipoPago] = useState(
+    Object.keys(METODO_PAGO_API).find(k => METODO_PAGO_API[k] === factura.metodoPago) || 'Efectivo'
+  );
+
   const saldarMutation = useSaldarFactura(() => onClose());
 
-  const cambio = monto - factura.total;
-  const pendiente = factura.total - monto;
-  const esPagado = monto >= factura.total;
+  const cambio = monto - saldo;
+  const pendiente = saldo - monto;
+  const esPagado = monto >= saldo;
 
   const handleCobrar = () => {
     saldarMutation.mutate({
       facturaId: factura.facturaId,
-      usuarioId: user?.usuarioId,
-      monto: Math.min(parseFloat(monto || 0), factura.total),
+      monto: Math.min(parseFloat(monto || 0), saldo),
+      metodoPago: METODO_PAGO_API[tipoPago] ?? 1,
     });
   };
 
@@ -48,10 +56,10 @@ export function CobroModal({ factura, onClose }) {
         <div className="rounded-xl p-4 mb-5 text-center"
           style={{ backgroundColor: 'var(--bg-tertiary)' }}>
           <p className="text-xs font-semibold uppercase tracking-wide mb-1" style={{ color: 'var(--text-muted)' }}>
-            Total de la factura
+            Saldo pendiente
           </p>
           <p className="text-4xl font-extrabold" style={{ color: 'var(--text-primary)' }}>
-            {fmt(factura.total)}
+            {fmt(saldo)}
           </p>
         </div>
 
@@ -85,9 +93,7 @@ export function CobroModal({ factura, onClose }) {
 
         {/* Monto recibido (Corregido a NumInput) */}
         <div className="mb-4">
-          <label className="label">
-            {tipoPago === 'Crédito' ? 'Monto de abono (0 = todo en crédito)' : 'Monto recibido'}
-          </label>
+          <label className="label">Monto recibido</label>
           <NumInput
             className="input text-right text-2xl font-extrabold py-3"
             value={monto}
@@ -96,7 +102,7 @@ export function CobroModal({ factura, onClose }) {
             placeholder="0"
           />
           <div className="flex gap-2 mt-2">
-            {[factura.total, Math.ceil(factura.total / 100) * 100, Math.ceil(factura.total / 500) * 500, Math.ceil(factura.total / 1000) * 1000]
+            {[saldo, Math.ceil(saldo / 100) * 100, Math.ceil(saldo / 500) * 500, Math.ceil(saldo / 1000) * 1000]
               .filter((v, i, arr) => arr.indexOf(v) === i)
               .slice(0, 4)
               .map(v => (
@@ -140,10 +146,10 @@ export function CobroModal({ factura, onClose }) {
         <div className="space-y-2">
           <button
             onClick={handleCobrar}
-            disabled={saldarMutation.isPending || (tipoPago !== 'Crédito' && parseFloat(monto || 0) <= 0)}
+            disabled={saldarMutation.isPending || parseFloat(monto || 0) <= 0}
             className="btn-primary w-full py-3 text-base"
           >
-            {saldarMutation.isPending ? 'Procesando...' : tipoPago === 'Crédito' && parseFloat(monto || 0) === 0 ? 'Dejar en crédito' : `Cobrar ${fmt(Math.min(parseFloat(monto || 0), factura.total))}`}
+            {saldarMutation.isPending ? 'Procesando...' : `Cobrar ${fmt(Math.min(parseFloat(monto || 0), saldo))}`}
           </button>
           <button onClick={handleDejarPendiente} className="btn-ghost w-full py-2 text-sm">
             Dejar pendiente y cerrar

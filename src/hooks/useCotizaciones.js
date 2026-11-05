@@ -26,40 +26,33 @@ export const useCreateCotizacion = (onSuccessCallback) => {
       toast.success('Cotización creada');
       if (onSuccessCallback) onSuccessCallback();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al crear cotización'),
   });
 };
 
+/** POST /api/cotizaciones/{id}/facturar */
 export const useConvertirCotizacion = (onSuccessCallback) => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: cotizService.convertirCotizacion,
+    mutationFn: (cotizacionId) => cotizService.facturarCotizacion(cotizacionId),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['cotizaciones'] });
       qc.invalidateQueries({ queryKey: ['facturas'] });
-      toast.success(`¡Factura #${res.data?.facturaId} creada exitosamente! 🎉`);
+      toast.success(res?.facturaId ? `Factura #${res.facturaId} creada` : 'Cotización facturada');
       if (onSuccessCallback) onSuccessCallback(res);
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al convertir'),
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al facturar'),
   });
 };
 
-
+/** @deprecated La API no expone edición de cotizaciones. */
 export const useActualizarCotizacion = (onSuccessCallback) => {
-  const qc = useQueryClient();
-
   return useMutation({
-    mutationFn: ({ cotizacionId, data }) =>
-      cotizService.updateCotizacion(cotizacionId, data),
-
+    mutationFn: cotizService.updateCotizacion,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['cotizaciones'] });
-      qc.invalidateQueries({ queryKey: ['cotizacion'] });  
       toast.success('Cotización actualizada');
       if (onSuccessCallback) onSuccessCallback();
     },
-
-    onError: (e) =>
-      toast.error(e.response?.data?.message || 'Error al actualizar'),
+    onError: (e) => toast.error(e.response?.data?.message || e.message || 'Error al actualizar'),
   });
 };

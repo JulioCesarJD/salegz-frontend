@@ -1,48 +1,71 @@
-// services/facturasService.js
-import api from '../lib/api';
+import api from '../lib/api'
+import { cleanParams, notSupported, unwrapPaged } from './_helpers'
+import { FACTURA_ENDPOINTS } from '../models/facturas'
 
-export const getFacturas = async (estado, desde, hasta, usuarioId, tipoComprobante) => {
-  const params = new URLSearchParams();
-  
-  if (estado && estado !== '') params.append('estado', estado);
-  if (desde) params.append('desde', desde);
-  if (hasta) params.append('hasta', hasta);
-  if (usuarioId) params.append('usuarioId', usuarioId);
-  if (tipoComprobante !== undefined && tipoComprobante !== null && tipoComprobante !== '') {
-    params.append('tipoComprobante', tipoComprobante);
-  }
-  
-  const qs = params.toString();
-  const res = await api.get(`/api/facturas${qs ? `?${qs}` : ''}`);
-  return res.data;
-};
+/**
+ * GET /api/facturas
+ * Filtros reales: search, estado, tipo, fechaDesde, fechaHasta, page, pageSize.
+ */
+export const getFacturas = async (params = {}) => {
+  const { data } = await api.get(FACTURA_ENDPOINTS.base, {
+    params: cleanParams(params),
+  })
+  return unwrapPaged(data)
+}
+
+export const getFacturasPaged = async (params = {}) => {
+  const { data } = await api.get(FACTURA_ENDPOINTS.base, {
+    params: cleanParams(params),
+  })
+  return data
+}
 
 export const getFacturaById = async (facturaId) => {
-  const res = await api.get(`/api/facturas/${facturaId}`);
-  return res.data;
-};
+  const { data } = await api.get(`${FACTURA_ENDPOINTS.base}/${facturaId}`)
+  return data
+}
 
+/** POST /api/facturas */
 export const createFactura = async (data) => {
-  const res = await api.post('/api/facturas', data);
-  return res.data;
-};
+  const { data: created } = await api.post(FACTURA_ENDPOINTS.base, data)
+  return created
+}
 
-export const saldarFactura = async (data) => {
-  const res = await api.patch(`/api/facturas/${data.facturaId}/saldar`, data);
-  return res.data;
-};
-
+/** POST /api/facturas/{id}/cancelar */
 export const cancelarFactura = async (facturaId) => {
-  const res = await api.patch(`/api/facturas/${facturaId}/cancelar`);
-  return res.data;
-};
+  const { data } = await api.post(FACTURA_ENDPOINTS.cancelar(facturaId))
+  return data
+}
 
-export const actualizarFactura = async (facturaId, data) => {
-  const res = await api.put(`/api/facturas/${facturaId}`, { 
-    facturaId,
-    tipoPago: data.tipoPago,
-    tipoFactura: data.tipoFactura,
-    detalles: data.detalles,
-  });
-  return res.data;
-};
+/** POST /api/facturas/{id}/abonar */
+export const abonarFactura = async (facturaId, abono) => {
+  const { data } = await api.post(FACTURA_ENDPOINTS.abonar(facturaId), abono)
+  return data
+}
+
+/** GET /api/facturas/cliente/{clienteId}/saldo */
+export const getSaldoCliente = async (clienteId) => {
+  const { data } = await api.get(FACTURA_ENDPOINTS.saldoCliente(clienteId))
+  return data?.saldo ?? 0
+}
+
+/**
+ * Compatibilidad: antes se llamaba a un endpoint /saldar inexistente.
+ * Ahora se registra un abono por el saldo pendiente (o el monto indicado).
+ * @param {{facturaId:number, monto?:number, metodoPago?:number, descripcionPago?:string}} data
+ */
+export const saldarFactura = async (data) => {
+  const { facturaId } = data
+  const monto = data.monto ?? (await getFacturaById(facturaId))?.saldoPendiente ?? 0
+  return abonarFactura(facturaId, {
+    monto,
+    metodoPago: data.metodoPago ?? null,
+    descripcionPago: data.descripcionPago ?? null,
+  })
+}
+
+/** La API no expone PUT /api/facturas/{id}. */
+export const actualizarFactura = () =>
+  notSupported('Editar una factura')
+
+export { FACTURA_ENDPOINTS }

@@ -1,46 +1,47 @@
-import api from '../lib/api';
+import api from '../lib/api'
+import { cleanParams, notSupported, unwrapPaged } from './_helpers'
+import { GASTO_ENDPOINTS } from '../models/gastos'
 
-export const getGastos = async () => {
-  const response = await api.get('/api/gastos');
-  return response.data;
-};
+/** GET /api/gastos?search=&fechaDesde=&fechaHasta=&page=&pageSize= */
+export const getGastos = async (params = {}) => {
+  const { data } = await api.get(GASTO_ENDPOINTS.base, {
+    params: cleanParams(params),
+  })
+  return unwrapPaged(data)
+}
 
-export const getGastoById = async (gastoId) => {
-  const response = await api.get(`/api/gastos/${gastoId}`);
-  return response.data;
-};
+export const getGastosPaged = async (params = {}) => {
+  const { data } = await api.get(GASTO_ENDPOINTS.base, {
+    params: cleanParams(params),
+  })
+  return data
+}
 
+export const getGastoById = async (gastosId) => {
+  const { data } = await api.get(`${GASTO_ENDPOINTS.base}/${gastosId}`)
+  return data
+}
+
+/** POST /api/gastos */
 export const createGasto = async (data) => {
-  const response = await api.post('/api/gastos', data);
-  return response.data;
-};
+  const { data: created } = await api.post(GASTO_ENDPOINTS.base, data)
+  return created
+}
 
-export const getConsumos = async () => {
-  const response = await api.get('/api/gastos/consumos');
-  return response.data;
-};
+export const deleteGasto = async (gastosId) => {
+  await api.delete(`${GASTO_ENDPOINTS.base}/${gastosId}`)
+}
 
-export const createConsumo = async (data) => {
-  const response = await api.post('/api/gastos/consumos', data);
-  return response.data;
-};
+/** La API no expone actualización de gastos. */
+export const updateGasto = () => notSupported('Editar un gasto')
 
-export const searchConsumos = async (q) => {
-  if (!q) return [];
-  const response = await api.get(`/api/gastos/consumos/search?q=${q}`);
-  return response.data;
-};
+/**
+ * Los "conceptos de gasto" no existen en la API actual.
+ * Se conservan como stubs explícitos para no llamar endpoints inexistentes.
+ */
+export const getConsumos = () => notSupported('El catálogo de conceptos de gasto')
+export const createConsumo = () => notSupported('Crear conceptos de gasto')
+export const updateConsumo = () => notSupported('Editar conceptos de gasto')
+export const searchConsumos = () => Promise.resolve([])
 
-
-export const updateConsumo = async (consumosGastosId, data) => {
-  const response = await api.put(`/api/gastos/consumos/${consumosGastosId}`, {
-    consumosGastosId,
-    ...data
-  });
-  return response.data;
-};
-
-export const updateGasto = async (gastosId, data) => {
-  const response = await api.put(`/api/gastos/${gastosId}`, { gastosId, ...data });
-  return response.data;
-};
+export { GASTO_ENDPOINTS }

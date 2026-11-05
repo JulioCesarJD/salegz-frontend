@@ -25,6 +25,16 @@ export const TIPO_NCF = {
   GUBERNAMENTAL: 'gubernamental',
 };
 
+const METODO_PAGO_LABEL = {
+  1: 'Efectivo',
+  2: 'Cheque',
+  3: 'Tarjeta',
+  4: 'Transferencia',
+};
+
+const tipoPagoLabel = (f) =>
+  f?.tipo ? 'Crédito' : (METODO_PAGO_LABEL[f?.metodoPago] || '—');
+
 
 export function FacturasPage() {
   const { user } = useAuthStore();
@@ -49,11 +59,9 @@ export function FacturasPage() {
   const hoy = localDate();
 
   const [search, setSearch] = useState('');
-  const [tipoNcf, setTipoNcf] = useState('');
   const [estado, setEstado] = useState('');
   const [desde, setDesde] = useState(hoy);
   const [hasta, setHasta] = useState(hoy);
-  const [soloMios, setSoloMios] = useState(!isAdmin);
   const [modal, setModal] = useState(null);
   const [cobroFactura, setCobroFactura] = useState(null);
 
@@ -65,38 +73,26 @@ export function FacturasPage() {
   const [pinPendiente, setPinPendiente] = useState(null);
   // ────────────────────────────────────────────────────────────────────────────
 
-  // const { data: facturas = [], isLoading } = useFacturas(estado, desde, hasta, soloMios, user?.usuarioId);
-
-  const { data: facturas = [], isLoading } = useFacturas(
-    estado,
-    desde,
-    hasta,
-    soloMios,
-    user?.usuarioId,
-    tipoNcf
-  );
+  const { data: facturas = [], isLoading } = useFacturas(estado, desde, hasta);
 
   const cancelarMutation = useCancelarFactura();
 
   const list = facturas.filter(f => {
     const q = search.toLowerCase();
-    return !q || f.nombreCliente.toLowerCase().includes(q) || String(f.facturaId).includes(q);
+    return !q || (f.nombreCliente || '').toLowerCase().includes(q) || String(f.facturaId).includes(q);
   });
 
   const totalMes = facturas.reduce((s, f) => f.estado !== 0 ? s + f.total : s, 0);
-  const pendiente = facturas.reduce((s, f) => f.estado !== 0 ? s + (f.total - f.pagado) : s, 0);
+  const pendiente = facturas.reduce((s, f) => f.estado !== 0 ? s + (f.total - f.montoPagado) : s, 0);
 
-  const onNuevaFacturaSuccess = (res, variables) => {
+  const onNuevaFacturaSuccess = (res) => {
     setModal(null);
-    ` `
+
     // SI ES CRÉDITO NO ABRIR COBRO
-    if (variables?.tipoFactura === 1) {
-      return;
-    }
+    if (res?.tipo) return;
 
     // SOLO CONTADO ABRE COBRO
-    const facturaId = res?.id;
-
+    const facturaId = res?.facturaId;
     if (facturaId) {
       facturasService
         .getFacturaById(facturaId)
@@ -125,7 +121,8 @@ export function FacturasPage() {
   // Paso 2 – el usuario confirmó en el diálogo
   const handleConfirmarCancelacion = () => {
     if (confirmarId == null) return;
-    
+    setPinPendiente(confirmarId);
+    setConfirmarId(null);
   };
 
 
@@ -213,22 +210,6 @@ export function FacturasPage() {
           </select>
         </div>
 
-        <div className=" ">
-          <label className="label text-xs sm:text-sm">filtre Comprobate</label>
-          <select
-            className="input w-full sm:w-44"
-            value={tipoNcf}
-            onChange={(e) => setTipoNcf(e.target.value)}
-          >
-            <option value="">Todos los comprobantes</option>
-            <option value="consumidorFinal">Consumidor Final</option>
-            <option value="fiscal">Crédito Fiscal</option>
-            <option value="regimenEspecial">Régimen Especial</option>
-            <option value="gubernamental">Gubernamental</option>
-          </select>
-        </div>
-
-
         <div className="flex gap-2">
           <div className="flex-1">
             <label className="label text-xs sm:text-sm">Desde</label>
@@ -248,13 +229,6 @@ export function FacturasPage() {
             setHasta(hoy);
           }} className="btn-secondary btn-sm flex-1 sm:flex-none">Este mes</button>
         </div>
-
-        {isAdmin && (
-          <button onClick={() => setSoloMios(s => !s)}
-            className={`${soloMios ? 'btn-primary' : 'btn-secondary'} btn-sm w-full sm:w-auto`}>
-            {soloMios ? '👤 Solo las mías' : '👥 Todas'}
-          </button>
-        )}
       </div>
 
       {/* Tabla */}
@@ -291,12 +265,12 @@ export function FacturasPage() {
                   <td className="text-sm whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
                     {new Date(f.fecha).toLocaleDateString('es-DO')}
                   </td>
-                  <td><span className="badge badge-gray whitespace-nowrap">{f.tipoPago}</span></td>
+                  <td><span className="badge badge-gray whitespace-nowrap">{tipoPagoLabel(f)}</span></td>
                   <td className="text-start"><span className="font-bold text-sm tabular-nums whitespace-nowrap">{fmt(f.total)}</span></td>
-                  <td className="text-start"><span className="font-semibold text-sm tabular-nums text-green-500 whitespace-nowrap">{fmt(f.pagado)}</span></td>
+                  <td className="text-start"><span className="font-semibold text-sm tabular-nums text-green-500 whitespace-nowrap">{fmt(f.montoPagado)}</span></td>
                   <td className="text-start">
-                    {(f.total - f.pagado) > 0
-                      ? <span className="font-semibold text-sm tabular-nums text-red-500 whitespace-nowrap">{fmt(f.total - f.pagado)}</span>
+                    {(f.total - f.montoPagado) > 0
+                      ? <span className="font-semibold text-sm tabular-nums text-red-500 whitespace-nowrap">{fmt(f.total - f.montoPagado)}</span>
                       : <span style={{ color: 'var(--text-muted)' }}>—</span>
                     }
                   </td>
@@ -309,7 +283,7 @@ export function FacturasPage() {
                       <button onClick={() => handleImprimir(f.facturaId)} className="btn-ghost btn-icon btn-sm" title="Imprimir">
                         <Printer size={14} />
                       </button>
-                      {(f.estado === 3 || f.estado === 1) && (f.total - f.pagado) > 0 && (
+                      {(f.estado === 3 || f.estado === 1) && (f.total - f.montoPagado) > 0 && (
                         <button onClick={() => setCobroFactura(f)} className="btn-ghost btn-icon btn-sm text-green-500" title="Cobrar">
                           <DollarSign size={14} />
                         </button>

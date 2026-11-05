@@ -1,19 +1,26 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Edit2, Package, AlertTriangle } from 'lucide-react';
-import { usePermiso } from '../hooks/usePermiso';
-import api from '../lib/api';
-import { useProductos } from '../hooks/useProductos';
-import { fmt } from '../utils/format';
-import { ProductoModal } from '../components/features/productos/ProductoModal';
-import { CategoriaModal } from '../components/features/categorias/CategoriaModal';
+import React, { useState } from 'react'
+import { Plus, Search, Edit2, Package, AlertTriangle } from 'lucide-react'
+import { usePermiso } from '../hooks/usePermiso'
+import { useProductos } from '../hooks/useProductos'
+import { useCategorias } from '../hooks/useCategorias'
+import { fmt } from '../utils/format'
+import { ProductoModal } from '../components/features/productos/ProductoModal'
+import { CategoriaModal } from '../components/features/categorias/CategoriaModal'
 
 
 export function ProductosPage() {
-  const { puedeVer } = usePermiso();
+  const { puedeVer } = usePermiso()
+  const puedeAcceder = puedeVer('verProductos')
 
-  // Verificar acceso a Productos
-  if (!puedeVer('verProductos')) {
+  const [search,  setSearch]  = useState('')
+  const [catFilt, setCatFilt] = useState('')
+  const [modal,   setModal]   = useState(null)
+  const [catModal, setCatModal] = useState(false)
+
+  const { data: prods = [], isLoading } = useProductos({ pageSize: 1000 })
+  const { data: cats = [] } = useCategorias({ pageSize: 1000 })
+
+  if (!puedeAcceder) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -28,28 +35,14 @@ export function ProductosPage() {
     )
   }
 
-  const [search,  setSearch]  = useState('');
-  const [catFilt, setCatFilt] = useState('');
-  const [modal,   setModal]   = useState(null);
-
-  const { data: prods = [], isLoading } = useProductos();
-
-  const { data: cats = [] } = useQuery({
-    queryKey: ['categorias'],
-    queryFn:  () => api.get('/api/categorias').then(r => r.data),
-  });
-
   const list = prods.filter(p => {
-    const q = search.toLowerCase();
-    const mQ = !q || p.descripcion.toLowerCase().includes(q) || p.referencia?.toLowerCase().includes(q) || p.codigoBarra?.includes(q);
-    const mC = !catFilt || p.categoriaId === parseInt(catFilt);
-    return mQ && mC;
-  });
+    const q = search.toLowerCase()
+    const mQ = !q || p.descripcion.toLowerCase().includes(q) || p.referencia?.toLowerCase().includes(q) || p.codigoBarra?.includes(q)
+    const mC = !catFilt || p.categoriaId === parseInt(catFilt)
+    return mQ && mC
+  })
 
-  const stockBajoCount = prods.filter(p => p.cantidad <= p.minimo).length;
-
-   const [catModal, setCatModal] = useState(false)
-
+  const stockBajoCount = prods.filter(p => p.cantidad <= p.minimo).length
 
   return (
     <div className="space-y-5">
@@ -125,7 +118,7 @@ export function ProductosPage() {
                     </div>
                   </div>
                 </td>
-                <td><span className="badge badge-gray">{p.categoria}</span></td>
+                <td><span className="badge badge-gray">{p.categoriaDescripcion || '—'}</span></td>
                 <td>
                   <div className="flex items-center gap-1">
                     {p.cantidad <= p.minimo && <AlertTriangle size={13} className="text-red-500 flex-shrink-0" />}
@@ -139,8 +132,8 @@ export function ProductosPage() {
                 <td className="font-semibold text-sm">{fmt(p.precio1)}</td>
                 <td className="text-sm">{p.precio2 > 0 ? fmt(p.precio2) : <span style={{ color: 'var(--text-muted)' }}>—</span>}</td>
                 <td>
-                  <span className={p.itbis === 1 ? 'badge badge-blue' : 'badge badge-gray'}>
-                    {p.itbis === 1 ? '18%' : 'Exento'}
+                  <span className={p.exento ? 'badge badge-gray' : 'badge badge-blue'}>
+                    {p.exento ? 'Exento' : `${p.itbis}%`}
                   </span>
                 </td>
                 <td>

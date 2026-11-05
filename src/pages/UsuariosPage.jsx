@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Edit2, Key, Users, Shield, Trash2 } from 'lucide-react'
 import { useForm } from 'react-hook-form'
-import api from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/authStore'
-import { isAdminUser, isSuperAdmin, canManageUser } from '../utils/auth'
+import { isAdminUser, isSuperAdmin, canManageUser, USER_ROLES } from '../utils/auth'
+import { useUsuarios, useCreateUsuario, useUpdateUsuario, useDeleteUsuario, useChangePassword } from '../hooks/useUsuarios'
+import { useEmpresas } from '../hooks/useEmpresas'
+import { useCatalogoPermisos, useUsuarioPermisos, useReemplazarPermisos } from '../hooks/usePermisos'
 
 function ConfirmDeleteModal({ usuario, onClose, onConfirm, busy }) {
   return (
@@ -36,9 +37,15 @@ function ConfirmDeleteModal({ usuario, onClose, onConfirm, busy }) {
 // ── Modal usuario ────────────────────────────────────────────────
 function UsuarioModal({ usuario, onClose, onSave, busy, currentUser }) {
   const isEdit = !!usuario?.usuarioId
+  const esSuper = isSuperAdmin(currentUser)
+  const { data: empresas = [] } = useEmpresas({ pageSize: 1000 }, { enabled: esSuper })
+
   const { register, handleSubmit, formState: { errors } } = useForm({
-    defaultValues: usuario || { tipoUsuario: 1, pin: 0 },
+    defaultValues: usuario
+      ? { ...usuario, pin: '' }
+      : { tipoUsuario: esSuper ? USER_ROLES.ADMIN : USER_ROLES.NORMAL, pin: '', empresaId: currentUser?.empresaId ?? '' },
   })
+
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="modal-box max-w-md">
@@ -50,17 +57,37 @@ function UsuarioModal({ usuario, onClose, onSave, busy, currentUser }) {
         </div>
         <form onSubmit={handleSubmit(d => {
           const tipo = parseInt(d.tipoUsuario)
+          const pin = d.pin === '' || d.pin === undefined || d.pin === null ? null : parseInt(d.pin)
 
-          if (tipo === 2 && !isSuperAdmin(currentUser)) {
+          if (tipo === USER_ROLES.SUPERADMIN && !esSuper) {
             toast.error('No tienes permiso para crear SuperAdmin')
             return
           }
 
+          if (!isEdit) {
+            const empresaId = esSuper ? parseInt(d.empresaId) : currentUser?.empresaId
+            if (!empresaId) {
+              toast.error('Debes seleccionar una empresa')
+              return
+            }
+            onSave({
+              nombre: d.nombre,
+              correo: d.correo,
+              contrasena: d.contrasena,
+              tipoUsuario: tipo,
+              empresaId,
+              pin,
+              activo: true,
+            })
+            return
+          }
+
           onSave({
-            ...d,
-            empresaId: 1,
-            tipoUsuario: tipo,
-            pin: parseInt(d.pin || 0),
+            usuarioId: usuario.usuarioId,
+            nombre: d.nombre,
+            correo: d.correo,
+            pin,
+            ...(esSuper ? { tipoUsuario: tipo } : {}),
           })
         })}
           className="space-y-4">
@@ -84,15 +111,28 @@ function UsuarioModal({ usuario, onClose, onSave, busy, currentUser }) {
               {errors.contrasena && <p className="text-red-500 text-xs mt-1">{errors.contrasena.message}</p>}
             </div>
           )}
+          {!isEdit && esSuper && (
+            <div>
+              <label className="label">Empresa *</label>
+              <select className={`input ${errors.empresaId ? 'input-error' : ''}`}
+                {...register('empresaId', { required: 'Requerido' })}>
+                <option value="">Seleccione...</option>
+                {empresas.map(e => (
+                  <option key={e.empresaId} value={e.empresaId}>{e.nombre}</option>
+                ))}
+              </select>
+              {errors.empresaId && <p className="text-red-500 text-xs mt-1">{errors.empresaId.message}</p>}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Tipo</label>
-              <select className="input" {...register('tipoUsuario')}>
-                <option value={0}>Administrador</option>
-                <option value={1}>Normal</option>
-                {isSuperAdmin(currentUser ?? {}) && (
-                  <option value={2}>Superadmin</option>
+              <select className="input" {...register('tipoUsuario')} disabled={!esSuper && isEdit}>
+                {esSuper && <option value={USER_ROLES.SUPERADMIN}>SuperAdmin</option>}
+                {(esSuper || usuario?.tipoUsuario === USER_ROLES.ADMIN) && (
+                  <option value={USER_ROLES.ADMIN}>Administrador</option>
                 )}
+                <option value={USER_ROLES.NORMAL}>Normal</option>
               </select>
             </div>
             <div>
@@ -112,7 +152,7 @@ function UsuarioModal({ usuario, onClose, onSave, busy, currentUser }) {
   )
 }
 
-// ── Modal contraseña ─────────────────────────────────────────────
+// ── Modal contraseña (solo el propio usuario) ────────────────────
 function CambiarContrasenaModal({ usuario, onClose, onSave, busy }) {
   const { register, handleSubmit, formState: { errors } } = useForm()
   return (
@@ -120,7 +160,7 @@ function CambiarContrasenaModal({ usuario, onClose, onSave, busy }) {
       <div className="modal-box max-w-sm">
         <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Cambiar contraseña</h2>
         <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>{usuario.nombre}</p>
-        <form onSubmit={handleSubmit(d => onSave({ usuarioId: usuario.usuarioId, contrasenaActual: d.actual, nuevaContrasena: d.nueva }))} className="space-y-4">
+        <form onSubmit={handleSubmit(d => onSave({ contrasenaActual: d.actual, nuevaContrasena: d.nueva }))} className="space-y-4">
           <div>
             <label className="label">Contraseña actual *</label>
             <input type="password" className="input" {...register('actual', { required: true })} />
@@ -141,214 +181,39 @@ function CambiarContrasenaModal({ usuario, onClose, onSave, busy }) {
   )
 }
 
-// ── Modal permisos ───────────────────────────────────────────────
-const GRUPOS_PERMISOS = [
-  {
-    grupo: 'Facturas',
-    permisos: [
-      { key: 'verFacturas', label: 'Ver facturas' },
-      { key: 'crearFacturas', label: 'Crear facturas' },
-      { key: 'cancelarFacturas', label: 'Cancelar facturas' }
-    ]
-  },
-  {
-    grupo: 'Cotizaciones',
-    permisos: [
-      { key: 'verCotizaciones', label: 'Ver cotizaciones' },
-      { key: 'crearCotizaciones', label: 'Crear cotizaciones' }
-    ]
-  },
-  {
-    grupo: 'Compras',
-    permisos: [
-      { key: 'verCompras', label: 'Ver compras' },
-      { key: 'crearCompras', label: 'Crear compras' }
-    ]
-  },
-  {
-    grupo: 'Gastos',
-    permisos: [
-      { key: 'verGastos', label: 'Ver gastos' },
-      { key: 'crearGastos', label: 'Crear gastos' }
-    ]
-  },
-  {
-    grupo: 'Cuadres',
-    permisos: [
-      { key: 'verCuadres', label: 'Ver cuadres' },
-      { key: 'crearCuadres', label: 'Crear cuadres' }
-    ]
-  },
-  {
-    grupo: 'Clientes',
-    permisos: [
-      { key: 'verClientes', label: 'Ver clientes' },
-      { key: 'crearClientes', label: 'Crear/editar clientes' },
-    ]
-  },
-  {
-    grupo: 'Reportes',
-    permisos: [
-      { key: 'verReportes', label: 'Ver reportes' }
-    ]
-  },
-  {
-    grupo: 'Inventario',
-    permisos: [
-      { key: 'verInventario', label: 'Ver inventario' },
-      { key: 'crearInventario', label: 'Crear inventario' },
-      { key: 'editarInventario', label: 'Editar inventario' },
-      { key: 'eliminarInventario', label: 'Eliminar inventario' }
-    ]
-  },
-  {
-    grupo: 'Productos',
-    permisos: [
-      { key: 'verProductos', label: 'Ver productos' },
-      { key: 'crearProductos', label: 'Crear/editar productos' },
-    ]
-  },
-  {
-    grupo: 'Dashboard',
-    permisos: [
-      { key: 'verDashboard', label: 'Ver dashboard' },
-    ]
-  },
-  {
-    grupo: 'Categorías',
-    permisos: [
-      { key: 'verCategorias', label: 'Ver categorías' },
-    ]
-  },
-  {
-    grupo: 'Cuentas por Cobrar',
-    permisos: [
-      { key: 'verCuentaPorCobrar', label: 'Ver cuentas por cobrar' },
-    ]
-  },
-  {
-    grupo: 'Cuentas por Pagar',
-    permisos: [
-      { key: 'verCuentasPagar', label: 'Ver cuentas por pagar' },
-    ]
-  },
-  {
-    grupo: 'Órdenes',
-    permisos: [
-      { key: 'verOrdenes', label: 'Ver órdenes' },
-    ]
-  },
-  {
-    grupo: 'Notas de Crédito',
-    permisos: [
-      { key: 'verNotasCredito', label: 'Ver notas de crédito' },
-    ]
-  },
-  {
-    grupo: 'NCF',
-    permisos: [
-      { key: 'verNcf', label: 'Ver NCF' },
-    ]
-  },
-  {
-    grupo: 'Auditoría',
-    permisos: [
-      { key: 'verAuditoria', label: 'Ver auditoría' },
-    ]
-  },
-  {
-    grupo: 'Fiscal',
-    permisos: [
-      { key: 'verFiscal', label: 'Ver fiscal' },
-    ]
-  },
-  {
-    grupo: 'Desglose',
-    permisos: [
-      { key: 'verDesclose', label: 'Ver desglose' },
-    ]
-  },
-]
-
+// ── Modal permisos (catálogo real de la API) ─────────────────────
 function PermisosModal({ usuario, onClose, onSave, busy }) {
-  const { data: permisos, isLoading } = useQuery({
-    queryKey: ['permisos', usuario.usuarioId],
-    queryFn: () => api.get(`/api/usuarios/${usuario.usuarioId}/permisos`).then(r => r.data),
-  })
-
-  const { register, handleSubmit, watch, setValue } = useForm()
-
-  const [initialized, setInitialized] = useState(false)
+  const { data: catalogo = {}, isLoading: loadingCatalogo } = useCatalogoPermisos()
+  const { data: asignados = [], isLoading: loadingAsignados } = useUsuarioPermisos(usuario.usuarioId)
+  const [seleccionados, setSeleccionados] = useState(() => new Set())
 
   useEffect(() => {
-    setInitialized(false)
+    if (asignados && asignados.length > 0) {
+      setSeleccionados(new Set(asignados.map(p => p.permisoId)))
+    }
   }, [usuario.usuarioId])
 
-  useEffect(() => {
-    if (permisos && !initialized) {
-      Object.entries(permisos).forEach(([k, v]) => {
-        if (k !== 'usuarioId') setValue(k, v)
-      })
-      setInitialized(true)
-    }
-  }, [permisos, initialized, setValue])
-
-  const vals = watch()
-
-  const toggleGrupo = (grupo) => {
-    const keys = GRUPOS_PERMISOS.find(g => g.grupo === grupo)?.permisos.map(p => p.key) || []
-    const allOn = keys.every(k => vals[k])
-    keys.forEach(k => setValue(k, !allOn))
-  }
-
-  const handleTogglePermiso = (key, grupo) => {
-    const nuevoValor = !vals[key]
-    setValue(key, nuevoValor)
-    if (key.startsWith('crear') && nuevoValor) {
-      const verKey = key.replace('crear', 'ver')
-      setValue(verKey, true)
-    }
-    if (key.startsWith('ver') && !nuevoValor) {
-      const permisosGrupo = GRUPOS_PERMISOS.find(g => g.grupo === grupo)?.permisos || []
-      permisosGrupo.forEach(p => setValue(p.key, false))
-    }
-  }
-
-  const submit = (data) => {
-    onSave({
-      usuarioId: usuario.usuarioId,
-      verFacturas:       !!data.verFacturas,
-      crearFacturas:     !!data.crearFacturas,
-      cancelarFacturas:  !!data.cancelarFacturas,
-      verCotizaciones:   !!data.verCotizaciones,
-      crearCotizaciones: !!data.crearCotizaciones,
-      verCompras:        !!data.verCompras,
-      crearCompras:      !!data.crearCompras,
-      verGastos:         !!data.verGastos,
-      crearGastos:       !!data.crearGastos,
-      verCuadres:        !!data.verCuadres,
-      crearCuadres:      !!data.crearCuadres,
-      verClientes:       !!data.verClientes,
-      crearClientes:     !!data.crearClientes,
-      verProductos:      !!data.verProductos,
-      crearProductos:    !!data.crearProductos,
-      verReportes:       !!data.verReportes,
-      verDashboard:      !!data.verDashboard,
-      verCategorias:     !!data.verCategorias,
-      verCuentaPorCobrar: !!data.verCuentaPorCobrar,
-      verCuentasPagar:   !!data.verCuentasPagar,
-      verOrdenes:        !!data.verOrdenes,
-      verNotasCredito:   !!data.verNotasCredito,
-      verNcf:            !!data.verNcf,
-      verAuditoria:      !!data.verAuditoria,
-      verFiscal:         !!data.verFiscal,
-      verDesclose:       !!data.verDesclose,
-      verInventario:     !!data.verInventario,
-      crearInventario:   !!data.crearInventario,
-      editarInventario:  !!data.editarInventario,
-      eliminarInventario: !!data.eliminarInventario,
+  const togglePermiso = (permisoId) => {
+    setSeleccionados(prev => {
+      const next = new Set(prev)
+      if (next.has(permisoId)) next.delete(permisoId)
+      else next.add(permisoId)
+      return next
     })
   }
+
+  const toggleGrupo = (permisos) => {
+    const ids = permisos.map(p => p.permisoId)
+    const allOn = ids.every(id => seleccionados.has(id))
+    setSeleccionados(prev => {
+      const next = new Set(prev)
+      ids.forEach(id => (allOn ? next.delete(id) : next.add(id)))
+      return next
+    })
+  }
+
+  const grupos = Object.entries(catalogo)
+  const isLoading = loadingCatalogo || loadingAsignados
 
   return (
     <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -366,32 +231,32 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
         {isLoading ? (
           <div className="py-10 text-center" style={{ color: 'var(--text-muted)' }}>Cargando...</div>
         ) : (
-          <form onSubmit={handleSubmit(submit)}>
+          <form onSubmit={e => { e.preventDefault(); onSave({ usuarioId: usuario.usuarioId, permisoIds: [...seleccionados] }) }}>
             <div className="space-y-4 my-5 max-h-[60vh] overflow-y-auto pr-1">
-              {GRUPOS_PERMISOS.map(g => {
-                const keys = g.permisos.map(p => p.key)
-                const allOn = keys.every(k => vals[k])
+              {grupos.map(([modulo, permisos]) => {
+                const allOn = permisos.length > 0 && permisos.every(p => seleccionados.has(p.permisoId))
                 return (
-                  <div key={g.grupo} className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
-                    <button type="button" onClick={() => toggleGrupo(g.grupo)}
+                  <div key={modulo} className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+                    <button type="button" onClick={() => toggleGrupo(permisos)}
                       className="w-full flex items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-[var(--bg-tertiary)]"
                       style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                      <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{g.grupo}</span>
+                      <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{modulo || 'General'}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${allOn ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
                         {allOn ? 'Todo habilitado' : 'Personalizado'}
                       </span>
                     </button>
                     <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                      {g.permisos.map(p => (
-                        <label key={p.key}
+                      {permisos.map(p => (
+                        <label key={p.permisoId}
                           className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-[var(--bg-tertiary)] transition-colors">
-                          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{p.label}</span>
+                          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                            {p.descripcion || p.codigo}
+                          </span>
                           <div className="relative">
-                            <input type="checkbox" className="sr-only" {...register(p.key)} />
-                            {/* <div onClick={() => setValue(p.key, !vals[p.key])} */}
-                            <div onClick={() => handleTogglePermiso(p.key, g.grupo)}
-                              className={`w-10 h-5 rounded-full transition-colors cursor-pointer ${vals[p.key] ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${vals[p.key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                            <input type="checkbox" className="sr-only" checked={seleccionados.has(p.permisoId)} readOnly />
+                            <div onClick={() => togglePermiso(p.permisoId)}
+                              className={`w-10 h-5 rounded-full transition-colors cursor-pointer ${seleccionados.has(p.permisoId) ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                              <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${seleccionados.has(p.permisoId) ? 'translate-x-5' : 'translate-x-0.5'}`} />
                             </div>
                           </div>
                         </label>
@@ -400,6 +265,11 @@ function PermisosModal({ usuario, onClose, onSave, busy }) {
                   </div>
                 )
               })}
+              {grupos.length === 0 && (
+                <p className="text-sm text-center py-6" style={{ color: 'var(--text-muted)' }}>
+                  No hay permisos disponibles.
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
@@ -421,59 +291,20 @@ export function UsuariosPage() {
   const { user } = useAuthStore()
   const isAdmin = isAdminUser(user)
   const isSuper = isSuperAdmin(user)
-  const qc = useQueryClient()
 
-  const { data: usuarios = [], isLoading } = useQuery({
-    queryKey: ['usuarios'],
-    queryFn: () => api.get('/api/usuarios').then(r => r.data),
-  })
-
-  const create = useMutation({
-    mutationFn: (d) => api.post('/api/usuarios', d),
-    onSuccess: () => { qc.invalidateQueries(['usuarios']); toast.success('Usuario creado'); setModal(null) },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
-  })
-
-  const update = useMutation({
-    mutationFn: (d) => api.put(`/api/usuarios/${d.usuarioId}`, d),
-    onSuccess: () => { qc.invalidateQueries(['usuarios']); toast.success('Actualizado'); setModal(null) },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
-  })
-
-  const cambiarPass = useMutation({
-    mutationFn: (d) => api.patch(`/api/usuarios/${d.usuarioId}/cambiar-contrasena`, d),
-    onSuccess: () => { toast.success('Contraseña actualizada'); setModal(null) },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
-  })
-
-  const guardarPermisos = useMutation({
-    mutationFn: (d) => api.get(`/api/usuarios/${d.usuarioId}/permisos`, d),
-    onSuccess: (_, d) => {
-      qc.invalidateQueries({ queryKey: ['permisos', d.usuarioId] })
-      toast.success('Permisos guardados')
-      setModal(null)
-    },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
-  })
+  const { data: usuarios = [], isLoading } = useUsuarios({ pageSize: 1000 })
+  const create = useCreateUsuario(() => setModal(null))
+  const update = useUpdateUsuario(() => setModal(null))
+  const eliminar = useDeleteUsuario(() => setModal(null))
+  const cambiarPass = useChangePassword(() => setModal(null))
+  const guardarPermisos = useReemplazarPermisos(() => setModal(null))
 
   const busy = create.isPending || update.isPending
   const handleSave = (d) => d.usuarioId ? update.mutate(d) : create.mutate(d)
 
   const usuariosFiltrados = usuarios.filter(u => {
-    const tipoNum = Number(u.tipoUsuario)
-    const esUsuarioSuperAdmin = tipoNum === 2
     if (isSuper) return true
-    return !esUsuarioSuperAdmin
-  })
-
-  const eliminar = useMutation({
-    mutationFn: (id) => api.delete(`/api/usuarios/${id}`),
-    onSuccess: () => {
-      qc.invalidateQueries(['usuarios'])
-      toast.success('Usuario eliminado')
-      setModal(null)
-    },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
+    return Number(u.tipoUsuario) !== USER_ROLES.SUPERADMIN
   })
 
   return (
@@ -498,7 +329,7 @@ export function UsuariosPage() {
               <th className="w-44">Nombre</th>
               <th>Correo</th>
               <th className="w-28 px-4">Tipo</th>
-              <th className="w-28 px-4">Registro</th>
+              <th className="w-28 px-4">Estado</th>
               <th className="w-24 px-4">Acción</th>
             </tr>
           </thead>
@@ -517,7 +348,7 @@ export function UsuariosPage() {
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
                           style={{ backgroundColor: 'var(--brand)' }}>
-                          <span className="text-white text-xs font-bold">{u.nombre.charAt(0).toUpperCase()}</span>
+                          <span className="text-white text-xs font-bold">{(u.nombre || '?').charAt(0).toUpperCase()}</span>
                         </div>
                         <span className="font-medium text-sm truncate">{u.nombre}</span>
                       </div>
@@ -528,8 +359,10 @@ export function UsuariosPage() {
                         {isSuperAdmin(u) ? 'Superadmin' : isAdminUser(u) ? 'Admin' : 'Normal'}
                       </span>
                     </td>
-                    <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {new Date(u.fechaRegistro).toLocaleDateString('es-DO')}
+                    <td>
+                      <span className={u.activo ? 'badge badge-green' : 'badge badge-gray'}>
+                        {u.activo ? 'Activo' : 'Inactivo'}
+                      </span>
                     </td>
                     <td>
                       <div className="flex gap-1">
@@ -545,17 +378,21 @@ export function UsuariosPage() {
                             </button>
                           </>
                         )}
-                        <button onClick={() => setModal({ tipo: 'pass', usuario: u })}
-                          className="btn-ghost btn-icon btn-sm" title="Cambiar contraseña">
-                          <Key size={14} />
-                        </button>
-                        <button
-                          onClick={() => setModal({ tipo: 'eliminar', usuario: u })}
-                          className="btn-ghost btn-icon btn-sm text-red-500"
-                          title="Eliminar"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {u.usuarioId === user?.usuarioId && (
+                          <button onClick={() => setModal({ tipo: 'pass', usuario: u })}
+                            className="btn-ghost btn-icon btn-sm" title="Cambiar contraseña">
+                            <Key size={14} />
+                          </button>
+                        )}
+                        {isSuper && (
+                          <button
+                            onClick={() => setModal({ tipo: 'eliminar', usuario: u })}
+                            className="btn-ghost btn-icon btn-sm text-red-500"
+                            title="Eliminar"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

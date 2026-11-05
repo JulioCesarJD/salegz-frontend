@@ -1,27 +1,32 @@
-import api from '../lib/api';
+import * as clientesService from './clientesService'
+import * as productosService from './productosService'
+import * as empresasService from './empresasService'
+import * as controlesService from './controlesService'
+import { getStoredUser } from '../lib/tokenStorage'
 
-// --- Clientes ---
-export const searchClientes = async (query) => {
-  if (!query || query.length < 2) return [];
-  const response = await api.get(`/api/clientes/search?q=${query}`);
-  return response.data;
-};
+// --- Búsquedas (no existen endpoints /search: se usa el filtro `search`) ---
+export const searchClientes = (query) =>
+  clientesService.getClientes({ search: query, pageSize: 20 })
 
-// --- Productos ---
-export const searchProductos = async (query) => {
-  if (!query || query.length < 1) return [];
-  const response = await api.get(`/api/productos/search?q=${query}`);
-  return response.data;
-};
+export const searchProductos = (query) =>
+  productosService.getProductos({ search: query, pageSize: 20 })
 
-// --- Empresa/Controles ---
-export const getEmpresa = async () => {
-  const response = await api.get('/api/empresa');
-  return response.data;
-};
+// --- Empresa / controles del usuario autenticado ---
+function resolveEmpresaId(empresaId) {
+  if (empresaId) return empresaId
+  return getStoredUser()?.empresaId ?? null
+}
 
-export const getControlesEmpresa = async () => {
-  // Nota: original code usaba /api/empresa/control en unos lados y /api/Empresa/control en otros.
-  const response = await api.get('/api/empresa/control');
-  return response.data;
-};
+/** GET /api/empresas/{empresaId} */
+export const getEmpresa = async (empresaId) => {
+  const id = resolveEmpresaId(empresaId)
+  if (!id) throw new Error('El usuario no tiene una empresa asociada.')
+  return empresasService.getEmpresaById(id)
+}
+
+/** GET /api/controles/{empresaId} */
+export const getControlesEmpresa = async (empresaId) => {
+  const id = resolveEmpresaId(empresaId)
+  if (!id) throw new Error('El usuario no tiene una empresa asociada.')
+  return controlesService.getControles(id)
+}

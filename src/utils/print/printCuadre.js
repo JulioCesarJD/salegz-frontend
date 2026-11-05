@@ -4,23 +4,11 @@
 //   • PDF carta    → tamanoFactura === 1
 
 import { fmt, fmtFecha, loadLogo, abrirVentanaImpresion } from './shared'
-import { DENOM } from '../../constants/cuadres'
 
 // ────────────────────────────────────────────────────────────────
 // TICKET 80mm
 // ────────────────────────────────────────────────────────────────
 function buildTicketHTML(cuadre, empresa, logoBase64) {
-  const efectivo = DENOM.reduce((s, d) => s + (cuadre[d.key] || 0), 0)
-  const diferencia = cuadre.diferencia || 0
-  const difLabel = diferencia === 0 ? 'Cuadre exacto' : diferencia > 0 ? 'Sobrante' : 'Faltante'
-
-  const denominaciones = DENOM.filter(d => (cuadre[d.key] || 0) > 0)
-    .map(d => `
-      <tr>
-        <td style="font-size:10px;padding:2px 0;color:#555;">${d.label}</td>
-        <td style="text-align:right;font-size:11px;padding:2px 0;font-weight:600;">${fmt(cuadre[d.key])}</td>
-      </tr>`).join('')
-
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -61,27 +49,14 @@ function buildTicketHTML(cuadre, empresa, logoBase64) {
   <div style="font-size:10px;">
     <div class="info-row"><span class="bold">CUADRE #:</span> ${cuadre.cuadreId}</div>
     <div class="info-row"><span class="bold">FECHA:</span>    ${fmtFecha(cuadre.fecha)}</div>
-    <div class="info-row"><span class="bold">CAJERO:</span>   ${cuadre.usuario}</div>
-    <div class="info-row"><span class="bold">TURNO:</span>    ${cuadre.horaApertura || '—'} – ${cuadre.horaCierre || '—'}</div>
+    <div class="info-row"><span class="bold">CAJERO:</span>   ${cuadre.usuarioNombre || '—'}</div>
   </div>
 
   <div class="line-light"></div>
 
-  <div style="font-size:10px;margin-bottom:4px;" class="bold">CONTEO DE EFECTIVO</div>
+  <div style="font-size:10px;margin-bottom:4px;" class="bold">RESUMEN DE COBROS</div>
   <table>
-    ${denominaciones}
-    <tr><td colspan="2"><div class="line-light"></div></td></tr>
-    <tr class="total-row">
-      <td>EFECTIVO</td>
-      <td style="text-align:right;">${fmt(efectivo)}</td>
-    </tr>
-  </table>
-
-  <div class="line-light"></div>
-
-  <table>
-    <tr><td style="font-size:10px;">Fondo inicial</td><td style="text-align:right;font-size:11px;">${fmt(cuadre.fondoInicial)}</td></tr>
-    <tr><td style="font-size:10px;">Ventas sistema</td><td style="text-align:right;font-size:11px;">${fmt(cuadre.ventasSistema)}</td></tr>
+    <tr><td style="font-size:10px;">Efectivo</td><td style="text-align:right;font-size:11px;">${fmt(cuadre.totalEfectivo)}</td></tr>
     <tr><td style="font-size:10px;">Cheques (${cuadre.cantidadCheque || 0})</td><td style="text-align:right;font-size:11px;">${fmt(cuadre.totalCheque)}</td></tr>
     <tr><td style="font-size:10px;">Tarjetas (${cuadre.cantidadTarjeta || 0})</td><td style="text-align:right;font-size:11px;">${fmt(cuadre.totalTarjeta)}</td></tr>
     <tr><td style="font-size:10px;">Transf. (${cuadre.cantidadTransaccion || 0})</td><td style="text-align:right;font-size:11px;">${fmt(cuadre.totalTransaccion)}</td></tr>
@@ -91,16 +66,13 @@ function buildTicketHTML(cuadre, empresa, logoBase64) {
     </tr>
   </table>
 
-  <div class="line-bold"></div>
+  <div class="line-light"></div>
 
-  <div style="text-align:center;padding:6px 0;">
-    <div style="font-size:10px;color:#555;">${difLabel}</div>
-    <div style="font-size:16px;font-weight:bold;${diferencia === 0 ? 'color:#22c55e' : diferencia > 0 ? 'color:#3b82f6' : 'color:#ef4444'};">
-      ${diferencia === 0 ? fmt(0) : `${diferencia > 0 ? '+' : ''}${fmt(Math.abs(diferencia))}`}
-    </div>
-  </div>
-
-  ${cuadre.notas ? `<div class="line-light"></div><div style="font-size:9px;color:#555;"><strong>Notas:</strong> ${cuadre.notas}</div>` : ''}
+  <table>
+    <tr><td style="font-size:10px;">Ventas sistema</td><td style="text-align:right;font-size:11px;">${fmt(cuadre.ventasSistema)}</td></tr>
+    <tr><td style="font-size:10px;">Canceladas (${cuadre.cantidadCancelado || 0})</td><td style="text-align:right;font-size:11px;">${fmt(cuadre.montoCancelado)}</td></tr>
+    <tr><td style="font-size:10px;">Notas crédito (${cuadre.cantidadNotaCredito || 0})</td><td style="text-align:right;font-size:11px;">${fmt(cuadre.montoNotaCredito)}</td></tr>
+  </table>
 
   <div class="line-bold"></div>
   <div class="center" style="font-size:10px;color:#2c7a2c;">¡Gracias por su trabajo!</div>
@@ -114,18 +86,6 @@ function buildTicketHTML(cuadre, empresa, logoBase64) {
 // PDF CARTA — diseño moderno
 // ────────────────────────────────────────────────────────────────
 function buildPDFHTML(cuadre, empresa, logoBase64) {
-  const efectivo = DENOM.reduce((s, d) => s + (cuadre[d.key] || 0), 0)
-  const diferencia = cuadre.diferencia || 0
-  const difColor = diferencia === 0 ? '#22c55e' : diferencia > 0 ? '#3b82f6' : '#ef4444'
-  const difLabel = diferencia === 0 ? 'Cuadre exacto' : diferencia > 0 ? 'Sobrante' : 'Faltante'
-
-  const denominaciones = DENOM.filter(d => (cuadre[d.key] || 0) > 0)
-    .map((d, i) => `
-      <tr style="background:${i % 2 === 0 ? '#ffffff' : '#fafafc'};border-bottom:1px solid #edf2f7;">
-        <td style="padding:10px 8px 10px 0;font-size:13px;color:#1e293b;">${d.label}</td>
-        <td style="padding:10px 8px;text-align:right;font-size:14px;font-weight:600;color:#0f172a;">${fmt(cuadre[d.key])}</td>
-      </tr>`).join('')
-
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -161,34 +121,19 @@ function buildPDFHTML(cuadre, empresa, logoBase64) {
     .company-details { font-size:.75rem; color:#475569; margin-top:6px; line-height:1.4; }
     .right { text-align:right; }
     .cuadre-num { font-size:1.9rem; font-weight:800; color:#0f172a; line-height:1.2; }
-    .badge {
-      display:inline-block; color:#fff;
-      font-size:.7rem; font-weight:600; padding:4px 12px;
-      border-radius:40px; margin-top:8px;
-      background:${cuadre.estadoCuadre === 1 ? '#22c55e' : cuadre.estadoCuadre === 2 ? '#ef4444' : '#f59e0b'};
-    }
     .fecha { font-size:.75rem; color:#64748b; margin-top:10px; }
     .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:28px; }
     .info-card { background:#f8fafc; border-radius:20px; padding:12px 18px; border:1px solid #eef2ff; }
     .info-label { font-size:.65rem; text-transform:uppercase; font-weight:700; color:#5b6e8c; letter-spacing:.5px; margin-bottom:6px; }
     .info-value { font-size:.9rem; font-weight:600; color:#0f172a; }
-    table.items { width:100%; border-collapse:collapse; margin:20px 0 24px; }
-    table.items thead tr { background:#f1f5f9; }
-    table.items th { text-align:left; padding:12px 8px 12px 0; font-size:.7rem; font-weight:700; text-transform:uppercase; color:#334155; }
-    table.items th:last-child { text-align:right; }
     .totals-wrap { display:flex; justify-content:flex-end; margin-top:8px; }
-    .totals-box { width:320px; background:#fefefe; border-radius:20px; padding:16px 20px; border:1px solid #e2e8f0; }
+    .totals-box { width:340px; background:#fefefe; border-radius:20px; padding:16px 20px; border:1px solid #e2e8f0; }
     .t-row { display:flex; justify-content:space-between; font-size:.85rem; padding:6px 0; color:#1e293b; }
     .t-row.grand { border-top:2px solid #cbd5e1; margin-top:8px; padding-top:12px; font-weight:800; font-size:1.1rem; }
-    .dif-box {
-      margin-top:16px; padding:12px 16px; border-radius:16px;
-      background:${diferencia === 0 ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)'};
-    }
     .footer { margin-top:32px; border-top:1px solid #eef2ff; padding-top:20px; text-align:center; font-size:.7rem; color:#94a3b8; }
     @media print {
       body { background:white; padding:0; }
       .container { box-shadow:none; border-radius:0; }
-      .badge { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
     }
   </style>
 </head>
@@ -209,7 +154,6 @@ function buildPDFHTML(cuadre, empresa, logoBase64) {
     </div>
     <div class="right">
       <div class="cuadre-num">Cuadre #${cuadre.cuadreId}</div>
-      <div><span class="badge">${difLabel}</span></div>
       <div class="fecha">${fmtFecha(cuadre.fecha)}</div>
     </div>
   </div>
@@ -217,15 +161,7 @@ function buildPDFHTML(cuadre, empresa, logoBase64) {
   <div class="info-grid">
     <div class="info-card">
       <div class="info-label">Cajero</div>
-      <div class="info-value">${cuadre.usuario}</div>
-    </div>
-    <div class="info-card">
-      <div class="info-label">Turno</div>
-      <div class="info-value">${cuadre.horaApertura || '—'} – ${cuadre.horaCierre || '—'}</div>
-    </div>
-    <div class="info-card">
-      <div class="info-label">Fondo inicial</div>
-      <div class="info-value">${fmt(cuadre.fondoInicial)}</div>
+      <div class="info-value">${cuadre.usuarioNombre || '—'}</div>
     </div>
     <div class="info-card">
       <div class="info-label">Ventas sistema</div>
@@ -233,19 +169,9 @@ function buildPDFHTML(cuadre, empresa, logoBase64) {
     </div>
   </div>
 
-  <table class="items">
-    <thead>
-      <tr>
-        <th>Denominación</th>
-        <th style="text-align:right;">Monto</th>
-      </tr>
-    </thead>
-    <tbody>${denominaciones}</tbody>
-  </table>
-
   <div class="totals-wrap">
     <div class="totals-box">
-      <div class="t-row"><span>Efectivo contado</span><span>${fmt(efectivo)}</span></div>
+      <div class="t-row"><span>Efectivo</span><span>${fmt(cuadre.totalEfectivo)}</span></div>
       <div class="t-row"><span>Cheques (${cuadre.cantidadCheque || 0})</span><span>${fmt(cuadre.totalCheque)}</span></div>
       <div class="t-row"><span>Tarjetas (${cuadre.cantidadTarjeta || 0})</span><span>${fmt(cuadre.totalTarjeta)}</span></div>
       <div class="t-row"><span>Transferencias (${cuadre.cantidadTransaccion || 0})</span><span>${fmt(cuadre.totalTransaccion)}</span></div>
@@ -253,23 +179,12 @@ function buildPDFHTML(cuadre, empresa, logoBase64) {
     </div>
   </div>
 
-  <div class="dif-box">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <div>
-        <div style="font-size:.7rem;text-transform:uppercase;font-weight:700;letter-spacing:.5px;color:#5b6e8c;">${difLabel}</div>
-        <div style="font-size:.75rem;color:#64748b;margin-top:2px;">Ventas sis. ${fmt(cuadre.ventasSistema)} — fondo ${fmt(cuadre.fondoInicial)}</div>
-      </div>
-      <div style="font-size:1.3rem;font-weight:800;color:${difColor};">
-        ${diferencia === 0 ? fmt(0) : `${diferencia > 0 ? '+' : ''}${fmt(Math.abs(diferencia))}`}
-      </div>
+  <div class="totals-wrap" style="margin-top:20px;">
+    <div class="totals-box">
+      <div class="t-row"><span>Facturas canceladas (${cuadre.cantidadCancelado || 0})</span><span>${fmt(cuadre.montoCancelado)}</span></div>
+      <div class="t-row"><span>Notas de crédito (${cuadre.cantidadNotaCredito || 0})</span><span>${fmt(cuadre.montoNotaCredito)}</span></div>
     </div>
   </div>
-
-  ${cuadre.notas ? `
-    <div style="margin-top:20px;padding:12px 16px;border-radius:16px;border:1px solid var(--border);">
-      <div style="font-size:.65rem;text-transform:uppercase;font-weight:700;color:#5b6e8c;letter-spacing:.5px;margin-bottom:4px;">Notas</div>
-      <div style="font-size:.85rem;color:#334155;">${cuadre.notas}</div>
-    </div>` : ''}
 
   <div class="footer">
     <div>${empresa?.nombre || 'Mi Empresa'} · Cuadre de Caja</div>

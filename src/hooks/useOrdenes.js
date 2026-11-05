@@ -23,7 +23,7 @@ export const useProcesarOrden = (onSuccess) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ordenesService.procesarOrden,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ordenes'] }); qc.invalidateQueries({ queryKey: ['inventario'] }); toast.success('Orden procesada'); onSuccess?.(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ordenes'] }); toast.success('Orden procesada'); onSuccess?.(); },
     onError: (e) => toast.error(e.response?.data?.message || 'Error al procesar orden'),
   });
 };
@@ -32,7 +32,7 @@ export const useCancelarOrden = (onSuccess) => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ordenesService.cancelarOrden,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ordenes'] }); qc.invalidateQueries({ queryKey: ['inventario'] }); toast.success('Orden cancelada'); onSuccess?.(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['ordenes'] }); toast.success('Orden cancelada'); onSuccess?.(); },
     onError: (e) => toast.error(e.response?.data?.message || 'Error al cancelar orden'),
   });
 };

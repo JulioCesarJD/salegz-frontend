@@ -25,9 +25,9 @@ export function ProductoModal({ prod, cats, onClose }) {
   };
 
   const submit = (d) => {
+    const itbis = parseFloat(d.itbis) || 0
     const payload = {
       ...d,
-      empresaId:   1,
       categoriaId: parseInt(d.categoriaId),
       cantidad:    parseFloat(d.cantidad  || 0),
       costo:       parseFloat(d.costo     || 0),
@@ -35,7 +35,8 @@ export function ProductoModal({ prod, cats, onClose }) {
       precio1:     parseFloat(d.precio1   || 0),
       precio2:     parseFloat(d.precio2   || 0),
       precio3:     parseFloat(d.precio3   || 0),
-      itbis:       parseInt(d.itbis),
+      itbis,
+      exento:      itbis <= 0,
     };
 
     if (isEdit) {
@@ -124,7 +125,7 @@ export function ProductoModal({ prod, cats, onClose }) {
             <label className="label">ITBIS</label>
             <select className="input" {...register('itbis')}>
               <option value={0}>Exento</option>
-              <option value={1}>Gravado (18%)</option>
+              <option value={18}>Gravado (18%)</option>
             </select>
           </div>
 

@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as categoriasService from '../services/categoriasService';
 
-export const useCategorias = () => {
+export const useCategorias = (params) => {
   return useQuery({
-    queryKey: ['categorias'],
-    queryFn: categoriasService.getCategorias,
+    queryKey: ['categorias', params],
+    queryFn: () => categoriasService.getCategorias(params),
   });
 };
 

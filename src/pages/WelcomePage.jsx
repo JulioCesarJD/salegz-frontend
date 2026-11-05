@@ -1,14 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { FileText, Users, Package, Tag, TrendingUp, ClipboardList, Zap } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { usePermiso } from '../hooks/usePermiso'
-import api from '../lib/api'
-
-const fmt = (v) => new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(v || 0)
-
-const localDate = (d = new Date()) =>
-  `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+import { useInventarioBajoMinimo } from '../hooks/useReportes'
 
 const ACCESOS = [
   { to: '/facturas',     label: 'Facturas',     desc: 'Crear y gestionar facturas',  icon: FileText,      color: 'bg-green-50  dark:bg-green-900/20  text-green-600', permission: 'verFacturas' },
@@ -26,16 +20,10 @@ export function WelcomePage() {
 
   // ── Fechas locales DENTRO del componente ──
   const today = new Date()
-  const hoy   = localDate(today)
   const hora  = today.getHours()
   const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches'
 
-  const { data: ventas }         = useQuery({
-    queryKey: ['w-ventas', hoy],
-    queryFn:  () => api.get(`/api/reportes/ventas?desde=${hoy}&hasta=${hoy}`).then(r => r.data),
-  })
-  const { data: clientes = [] }  = useQuery({ queryKey: ['clientes'],   queryFn: () => api.get('/api/clientes').then(r => r.data) })
-  const { data: stockBajo = [] } = useQuery({ queryKey: ['stock-bajo'], queryFn: () => api.get('/api/productos/stock-bajo').then(r => r.data) })
+  const { data: stockBajo = [] } = useInventarioBajoMinimo()
 
   return (
     <div className="space-y-6">

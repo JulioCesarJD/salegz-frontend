@@ -1,11 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getCuadres, getCuadreById, createCuadre, getVentasCuadre } from '../services/cuadresService';
+import {
+  getCuadres,
+  getCuadreById,
+  createCuadre,
+  getVentasCuadre,
+} from '../services/cuadresService';
 import toast from 'react-hot-toast';
 
 export const useCuadres = (desde, hasta) => {
   return useQuery({
     queryKey: ['cuadres', desde, hasta],
-    queryFn: () => getCuadres(desde, hasta),
+    queryFn: () => getCuadres({ desde, hasta }),
   });
 };
 
@@ -17,6 +22,7 @@ export const useCuadre = (cuadreId) => {
   });
 };
 
+/** Ventas del período (GET /api/reportes/ventas-rango). */
 export const useVentasCuadre = (desde, hasta, usuarioId) => {
   return useQuery({
     queryKey: ['ventas-cuadre-hoy', usuarioId, desde, hasta],
@@ -26,7 +32,7 @@ export const useVentasCuadre = (desde, hasta, usuarioId) => {
 
 export const useCreateCuadre = (onSuccessCallback) => {
   const qc = useQueryClient();
-  
+
   return useMutation({
     mutationFn: createCuadre,
     onSuccess: () => {

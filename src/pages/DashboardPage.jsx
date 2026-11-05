@@ -1,12 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
-import { DollarSign, Users, AlertTriangle, TrendingUp, Package, ShoppingBag, Calendar, HandCoins, ShoppingCart } from 'lucide-react'
-import api from '../lib/api'
+import { DollarSign, Users, AlertTriangle, TrendingUp, Package, ShoppingBag, Calendar, HandCoins } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
-
-const fmt = (v) => new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(v || 0)
-
-const localDate = (d = new Date()) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+import { useVentasRango, useCxCPendientes, useInventarioBajoMinimo } from '../hooks/useReportes'
+import { useProductos } from '../hooks/useProductos'
+import { useClientes } from '../hooks/useClientes'
+import { localDate } from '../utils/date'
+import { fmt } from '../utils/format'
 
 function StatCard({ title, value, sub, icon: Icon, color }) {
   const colors = {
@@ -30,40 +28,58 @@ function StatCard({ title, value, sub, icon: Icon, color }) {
   )
 }
 
+const sumarVentas = (dias = []) =>
+  dias.reduce(
+    (acc, d) => ({
+      total: acc.total + (Number(d.total) || 0),
+      itbis: acc.itbis + (Number(d.itbis) || 0),
+      cantidad: acc.cantidad + (Number(d.cantidad) || 0),
+    }),
+    { total: 0, itbis: 0, cantidad: 0 }
+  )
+
 export function DashboardPage() {
   const { user } = useAuthStore()
   // ── Fechas locales DENTRO del componente ──
   const today = new Date()
   const hoy = localDate(today)
-  const desde = localDate(new Date(today.getFullYear(), today.getMonth(), 1))
+  const inicioMes = localDate(new Date(today.getFullYear(), today.getMonth(), 1))
 
   const hora = today.getHours()
   const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches'
 
-  const { data: ventasHoy } = useQuery({
-    queryKey: ['ventas-hoy', hoy],
-    queryFn: () => api.get(`/api/reportes/ventas?desde=${hoy}&hasta=${hoy}`).then(r => r.data),
-  })
-  const { data: ventasMes } = useQuery({
-    queryKey: ['ventas-mes', desde, hoy],
-    queryFn: () => api.get(`/api/reportes/ventas?desde=${desde}&hasta=${hoy}`).then(r => r.data),
-  })
-  const { data: cxc = [] } = useQuery({ queryKey: ['cxc'], queryFn: () => api.get('/api/reportes/cuentascobrar').then(r => r.data) })
-  const { data: stockBajo = [] } = useQuery({ queryKey: ['stock-bajo'], queryFn: () => api.get('/api/productos/stock-bajo').then(r => r.data) })
-  const { data: clientes = [] } = useQuery({ queryKey: ['clientes'], queryFn: () => api.get('/api/clientes').then(r => r.data) })
-  const { data: inv } = useQuery({ queryKey: ['inv-resumen'], queryFn: () => api.get('/api/reportes/inventario/resumen').then(r => r.data) })
-  // const { data: cxp = [] } = useQuery({ queryKey: ['cxp'], queryFn: () => api.get('/api/reportes/cuentas-pagar').then(r => r.data) })
-  const { data: cxp = [] } = useQuery({ queryKey: ['cxp'], queryFn: () => api.get('/api/reportes/cxp').then(r => r.data) })
-  
-  const { data: ordenesCount = 0 } = useQuery({ queryKey: ['ordenes-count'], queryFn: () => api.get('/api/ordenes?estado=0').then(r => r.data?.length || 0) })
+  // ── Reportes reales ──
+  const { data: ventasHoyRango = [] } = useVentasRango(hoy, hoy)
+  const { data: ventasMesRango = [] } = useVentasRango(inicioMes, hoy)
+  const { data: cxc = [] } = useCxCPendientes()
+  const { data: stockBajo = [] } = useInventarioBajoMinimo()
 
-  const margen = inv?.valorTotalPrecio1 > 0
+  // ── Catálogos reales (se agregan localmente) ──
+  const { data: clientes = [] } = useClientes({ pageSize: 1000 })
+  const { data: productos = [] } = useProductos({ pageSize: 1000 })
+
+  const ventasHoy = sumarVentas(ventasHoyRango)
+  const ventasMes = sumarVentas(ventasMesRango)
+
+  const inv = productos.reduce(
+    (acc, p) => {
+      const cantidad = Number(p.cantidad) || 0
+      acc.totalProductos += 1
+      acc.valorTotalCosto += cantidad * (Number(p.costo) || 0)
+      acc.valorTotalPrecio1 += cantidad * (Number(p.precio1) || 0)
+      return acc
+    },
+    { totalProductos: 0, valorTotalCosto: 0, valorTotalPrecio1: 0 }
+  )
+
+  const totalPorCobrar = cxc.reduce((acc, c) => acc + (Number(c.saldoPendiente) || 0), 0)
+  const margen = inv.valorTotalPrecio1 > 0
     ? (((inv.valorTotalPrecio1 - inv.valorTotalCosto) / inv.valorTotalPrecio1) * 100).toFixed(1)
     : 0
+  const promedioFactura = ventasHoy.cantidad > 0 ? ventasHoy.total / ventasHoy.cantidad : 0
 
   return (
     <div className="space-y-4 sm:space-y-6 px-4 sm:px-0">
-      {/* Header con gradiente y fondo responsivo */}
       {/* Header saludo estilo Welcome */}
       <div
         className="rounded-2xl p-4 sm:p-6 flex items-center justify-between overflow-hidden relative mb-4 sm:mb-6"
@@ -106,35 +122,35 @@ export function DashboardPage() {
       <div>
         <h2
           className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-2 sm:mb-3 flex items-center gap-2"
-          style={{ color: "var(--text-muted)" }}
+          style={{ color: 'var(--text-muted)' }}
         >
           <Calendar size={14} /> Ventas de hoy
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             title="Facturado hoy"
-            value={fmt(ventasHoy?.totalVentas)}
-            sub={`${ventasHoy?.cantidadFacturas || 0} facturas`}
+            value={fmt(ventasHoy.total)}
+            sub={`${ventasHoy.cantidad || 0} facturas`}
             icon={DollarSign}
             color="green"
           />
           <StatCard
-            title="Cobrado hoy"
-            value={fmt(ventasHoy?.totalCobrado)}
-            sub="Efectivo recibido"
+            title="Facturas hoy"
+            value={ventasHoy.cantidad || 0}
+            sub="Transacciones"
             icon={TrendingUp}
             color="blue"
           />
           <StatCard
-            title="Pendiente hoy"
-            value={fmt(ventasHoy?.totalPendiente)}
-            sub="Sin cobrar"
-            icon={AlertTriangle}
+            title="Promedio factura"
+            value={fmt(promedioFactura)}
+            sub="Por transacción"
+            icon={HandCoins}
             color="yellow"
           />
           <StatCard
-            title="ITBS hoy"
-            value={fmt(ventasHoy?.totalITBS)}
+            title="ITBIS hoy"
+            value={fmt(ventasHoy.itbis)}
             sub="Impuesto generado"
             icon={DollarSign}
             color="indigo"
@@ -146,26 +162,26 @@ export function DashboardPage() {
       <div>
         <h2
           className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-2 sm:mb-3"
-          style={{ color: "var(--text-muted)" }}
+          style={{ color: 'var(--text-muted)' }}
         >
-          Ventas del mes —{" "}
-          {today.toLocaleDateString("es-DO", {
-            month: "long",
-            year: "numeric",
+          Ventas del mes —{' '}
+          {today.toLocaleDateString('es-DO', {
+            month: 'long',
+            year: 'numeric',
           })}
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
           <StatCard
             title="Total del mes"
-            value={fmt(ventasMes?.totalVentas)}
-            sub={`${ventasMes?.cantidadFacturas || 0} facturas`}
+            value={fmt(ventasMes.total)}
+            sub={`${ventasMes.cantidad || 0} facturas`}
             icon={DollarSign}
             color="green"
           />
           <StatCard
             title="Por cobrar"
-            value={fmt(ventasMes?.totalPendiente)}
-            sub={`${cxc.length} pendientes`}
+            value={fmt(totalPorCobrar)}
+            sub={`${cxc.length} clientes pendientes`}
             icon={TrendingUp}
             color="yellow"
           />
@@ -188,14 +204,14 @@ export function DashboardPage() {
 
       {/* ── Nuevos módulos ── */}
       <div>
-        <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-2 sm:mb-3" style={{ color: "var(--text-muted)" }}>
+        <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-2 sm:mb-3" style={{ color: 'var(--text-muted)' }}>
           Otros indicadores
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <StatCard title="Cuentas por pagar" value={cxp.length} sub="Pendientes" icon={HandCoins} color="yellow" />
-          <StatCard title="Órdenes pendientes" value={ordenesCount} sub="Sin procesar" icon={ShoppingCart} color="blue" />
-          <StatCard title="Productos" value={inv?.totalProductos || 0} sub="En inventario" icon={Package} color="indigo" />
-          <StatCard title="Facturas hoy" value={ventasHoy?.cantidadFacturas || 0} sub="Transacciones" icon={TrendingUp} color="green" />
+          <StatCard title="Productos" value={inv.totalProductos} sub="En inventario" icon={Package} color="indigo" />
+          <StatCard title="Clientes" value={clientes.length} sub="Registrados" icon={Users} color="blue" />
+          <StatCard title="Facturas del mes" value={ventasMes.cantidad || 0} sub="Transacciones" icon={TrendingUp} color="green" />
+          <StatCard title="ITBIS del mes" value={fmt(ventasMes.itbis)} sub="Impuesto generado" icon={DollarSign} color="yellow" />
         </div>
       </div>
 
@@ -203,7 +219,7 @@ export function DashboardPage() {
       <div>
         <h2
           className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-2 sm:mb-3"
-          style={{ color: "var(--text-muted)" }}
+          style={{ color: 'var(--text-muted)' }}
         >
           Valor del inventario
         </h2>
@@ -212,7 +228,7 @@ export function DashboardPage() {
             <div className="flex items-start justify-between mb-3">
               <p
                 className="text-xs font-semibold uppercase tracking-wide"
-                style={{ color: "var(--text-muted)" }}
+                style={{ color: 'var(--text-muted)' }}
               >
                 Valor a costo
               </p>
@@ -222,11 +238,11 @@ export function DashboardPage() {
             </div>
             <p
               className="text-xl sm:text-2xl font-extrabold tabular-nums break-words"
-              style={{ color: "var(--text-primary)" }}
+              style={{ color: 'var(--text-primary)' }}
             >
-              {fmt(inv?.valorTotalCosto)}
+              {fmt(inv.valorTotalCosto)}
             </p>
-            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
               Lo que invertiste en stock
             </p>
           </div>
@@ -234,7 +250,7 @@ export function DashboardPage() {
             <div className="flex items-start justify-between mb-3">
               <p
                 className="text-xs font-semibold uppercase tracking-wide"
-                style={{ color: "var(--text-muted)" }}
+                style={{ color: 'var(--text-muted)' }}
               >
                 Valor a precio 1
               </p>
@@ -243,17 +259,17 @@ export function DashboardPage() {
               </div>
             </div>
             <p className="text-xl sm:text-2xl font-extrabold text-green-500 tabular-nums break-words">
-              {fmt(inv?.valorTotalPrecio1)}
+              {fmt(inv.valorTotalPrecio1)}
             </p>
-            <p className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>
-              Potencial · {inv?.totalProductos || 0} productos
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              Potencial · {inv.totalProductos} productos
             </p>
           </div>
           <div className="card animate-slide-up">
             <div className="flex items-start justify-between mb-3">
               <p
                 className="text-xs font-semibold uppercase tracking-wide"
-                style={{ color: "var(--text-muted)" }}
+                style={{ color: 'var(--text-muted)' }}
               >
                 Ganancia potencial
               </p>
@@ -262,18 +278,18 @@ export function DashboardPage() {
               </div>
             </div>
             <p className="text-xl sm:text-2xl font-extrabold text-indigo-500 tabular-nums break-words">
-              {fmt((inv?.valorTotalPrecio1 || 0) - (inv?.valorTotalCosto || 0))}
+              {fmt(inv.valorTotalPrecio1 - inv.valorTotalCosto)}
             </p>
             <p
               className="text-xs mt-1 mb-3"
-              style={{ color: "var(--text-muted)" }}
+              style={{ color: 'var(--text-muted)' }}
             >
-              Margen estimado:{" "}
+              Margen estimado:{' '}
               <strong className="text-indigo-500">{margen}%</strong>
             </p>
             <div
               className="w-full rounded-full h-1.5"
-              style={{ backgroundColor: "var(--bg-tertiary)" }}
+              style={{ backgroundColor: 'var(--bg-tertiary)' }}
             >
               <div
                 className="h-1.5 rounded-full bg-indigo-500 transition-all duration-700"
@@ -288,7 +304,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-sm sm:text-base" style={{ color: "var(--text-primary)" }}>
+            <h3 className="font-bold text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>
               Cuentas por cobrar
             </h3>
             {cxc.length > 0 && (
@@ -298,7 +314,7 @@ export function DashboardPage() {
           {cxc.length === 0 ? (
             <p
               className="text-sm text-center py-6 sm:py-8"
-              style={{ color: "var(--text-muted)" }}
+              style={{ color: 'var(--text-muted)' }}
             >
               Sin pendientes
             </p>
@@ -306,33 +322,33 @@ export function DashboardPage() {
             <div className="space-y-2 overflow-x-auto">
               {cxc.slice(0, 6).map((c) => (
                 <div
-                  key={c.facturaId}
+                  key={c.clienteId}
                   className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 rounded-lg"
-                  style={{ backgroundColor: "var(--bg-tertiary)" }}
+                  style={{ backgroundColor: 'var(--bg-tertiary)' }}
                 >
                   <div className="min-w-0">
                     <p
                       className="text-sm font-semibold truncate"
-                      style={{ color: "var(--text-primary)" }}
+                      style={{ color: 'var(--text-primary)' }}
                     >
-                      {c.nombreCliente}
+                      {c.nombre || 'Cliente'}
                     </p>
                     <p
                       className="text-xs"
-                      style={{ color: "var(--text-muted)" }}
+                      style={{ color: 'var(--text-muted)' }}
                     >
-                      Factura #{c.facturaId}
+                      Cliente #{c.clienteId}
                     </p>
                   </div>
                   <div className="text-left sm:text-right">
                     <p className="text-sm font-bold text-red-500 tabular-nums">
-                      {fmt(c.pendiente)}
+                      {fmt(c.saldoPendiente)}
                     </p>
                     <p
                       className="text-xs"
-                      style={{ color: "var(--text-muted)" }}
+                      style={{ color: 'var(--text-muted)' }}
                     >
-                      de {fmt(c.total)}
+                      saldo pendiente
                     </p>
                   </div>
                 </div>
@@ -342,7 +358,7 @@ export function DashboardPage() {
         </div>
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-sm sm:text-base" style={{ color: "var(--text-primary)" }}>
+            <h3 className="font-bold text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>
               Productos con stock bajo
             </h3>
             {stockBajo.length > 0 && (
@@ -352,7 +368,7 @@ export function DashboardPage() {
           {stockBajo.length === 0 ? (
             <p
               className="text-sm text-center py-6 sm:py-8"
-              style={{ color: "var(--text-muted)" }}
+              style={{ color: 'var(--text-muted)' }}
             >
               Todos los productos OK
             </p>
@@ -362,20 +378,20 @@ export function DashboardPage() {
                 <div
                   key={p.productoId}
                   className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 p-3 rounded-lg"
-                  style={{ backgroundColor: "var(--bg-tertiary)" }}
+                  style={{ backgroundColor: 'var(--bg-tertiary)' }}
                 >
                   <div className="min-w-0">
                     <p
                       className="text-sm font-semibold truncate"
-                      style={{ color: "var(--text-primary)" }}
+                      style={{ color: 'var(--text-primary)' }}
                     >
                       {p.descripcion}
                     </p>
                     <p
                       className="text-xs truncate"
-                      style={{ color: "var(--text-muted)" }}
+                      style={{ color: 'var(--text-muted)' }}
                     >
-                      {p.categoria}
+                      Producto #{p.productoId}
                     </p>
                   </div>
                   <div className="text-left sm:text-right">
@@ -384,7 +400,7 @@ export function DashboardPage() {
                     </p>
                     <p
                       className="text-xs"
-                      style={{ color: "var(--text-muted)" }}
+                      style={{ color: 'var(--text-muted)' }}
                     >
                       mín: {p.minimo}
                     </p>
@@ -396,5 +412,5 @@ export function DashboardPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

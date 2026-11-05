@@ -8,6 +8,7 @@ import { useAuthStore } from './store/authStore'
 import { usePermisosStore } from './store/permisosStore'
 import { isAdminUser } from './utils/auth'
 import { ProtectedRoute } from './components/ProtectedRoute'
+import { PermissionRoute } from './components/PermissionRoute'
 import { MainLayout } from './components/layout/MainLayout'
 
 import { LoginPage } from './pages/LoginPage'
@@ -25,16 +26,16 @@ import { ReportesPage } from './pages/ReportesPage'
 import { UsuariosPage } from './pages/UsuariosPage'
 import { ConfiguracionPage } from './pages/ConfiguracionPage'
 import { PerfilPage } from './pages/PerfilPage'
-import { InventarioPage } from './pages/InventarioPage'
 import { CuentaPorCobrarPage } from './pages/CuentaPorCobrarPage'
 import { CuentasPagarPage } from './pages/CuentasPagarPage'
 import { OrdenesPage } from './pages/OrdenesPage'
 import { NotasCreditoPage } from './pages/NotasCreditoPage'
 import { NcfPage } from './pages/NcfPage'
-import { AuditoriaPage } from './pages/AuditoriaPage'
 import { FiscalPage } from './pages/FiscalPage'
-
-import DesclosePage from './pages/DesclosePage'
+import { EscuelasPage } from './pages/EscuelasPage'
+import { MenuComidaPage } from './pages/MenuComidaPage'
+import { PostresPage } from './pages/PostresPage'
+import { ConducesPage } from './pages/ConducesPage'
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } })
 
@@ -59,24 +60,12 @@ export default function App() {
   const { user } = useAuthStore()
   const { cargarPermisos } = usePermisosStore()
 
-  useEffect(() => { init() }, [])
+  useEffect(() => { init() }, [init])
 
-  // Cargar permisos cuando el usuario se autentica
+  // Los permisos ya vienen en la sesión; este efecto cubre el recargado de página.
   useEffect(() => {
-    if (user?.usuarioId) {
-      cargarPermisos(user.usuarioId, user).catch((err) => {
-        if (err instanceof Error && err.message === 'session_expired') {
-          // En lugar de cerrar sesión inmediatamente, navegar al login con retraso
-          // para que el estado actual se conserve un momento
-          localStorage.removeItem('sg_token')
-          localStorage.removeItem('sg_user')
-          setTimeout(() => {
-            window.location.href = '/login'
-          }, 500)
-        }
-      })
-    }
-  }, [user?.usuarioId])
+    cargarPermisos(user)
+  }, [user, cargarPermisos])
 
   return (
     <QueryClientProvider client={qc}>
@@ -88,26 +77,27 @@ export default function App() {
           <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
             <Route path="dashboard"     element={<AdminRoute><DashboardPage /></AdminRoute>} />
             <Route path="welcome"       element={<NonAdminRoute><WelcomePage /></NonAdminRoute>} />
-            <Route path="clientes"      element={<ClientesPage />} />
-            <Route path="categorias"    element={<CategoriasPage />} />
-            <Route path="productos"     element={<ProductosPage />} />
-            <Route path="inventario"    element={<InventarioPage />} />
-            <Route path="facturas"      element={<FacturasPage />} />
-            <Route path="cotizaciones"  element={<CotizacionesPage />} />
-            <Route path="compras"       element={<AdminRoute><ComprasPage /></AdminRoute>} />
-            <Route path="gastos"        element={<AdminRoute><GastosPage /></AdminRoute>} />
-            <Route path="cuadres"       element={<CuadresPage />} />
-            <Route path="desclose"      element={<DesclosePage />} />
-            <Route path="reportes"      element={<AdminRoute><ReportesPage /></AdminRoute>} />
-            <Route path="usuarios"      element={<AdminRoute><UsuariosPage /></AdminRoute>} />
+            <Route path="clientes"      element={<PermissionRoute permission="Clientes.Ver"><ClientesPage /></PermissionRoute>} />
+            <Route path="categorias"    element={<PermissionRoute permission="Categorias.Ver"><CategoriasPage /></PermissionRoute>} />
+            <Route path="productos"     element={<PermissionRoute permission="Productos.Ver"><ProductosPage /></PermissionRoute>} />
+            <Route path="facturas"      element={<PermissionRoute permission="Facturas.Ver"><FacturasPage /></PermissionRoute>} />
+            <Route path="cotizaciones"  element={<PermissionRoute permission="Cotizaciones.Ver"><CotizacionesPage /></PermissionRoute>} />
+            <Route path="compras"       element={<PermissionRoute permission="Compras.Ver"><ComprasPage /></PermissionRoute>} />
+            <Route path="gastos"        element={<PermissionRoute permission="Gastos.Ver"><GastosPage /></PermissionRoute>} />
+            <Route path="cuadres"       element={<PermissionRoute permission="Cuadres.Ver"><CuadresPage /></PermissionRoute>} />
+            <Route path="reportes"      element={<PermissionRoute permission="Reportes.Ver"><ReportesPage /></PermissionRoute>} />
+            <Route path="usuarios"      element={<PermissionRoute permission="Usuarios.Ver"><UsuariosPage /></PermissionRoute>} />
             <Route path="configuracion" element={<AdminRoute><ConfiguracionPage /></AdminRoute>} />
             <Route path="perfil"        element={<PerfilPage />} />
-            <Route path="cuentaporcobrar"        element={<CuentaPorCobrarPage />} />
-            <Route path="cuentas-pagar"          element={<CuentasPagarPage />} />
+            <Route path="cuentaporcobrar"        element={<PermissionRoute permission="Facturas.Ver"><CuentaPorCobrarPage /></PermissionRoute>} />
+            <Route path="cuentas-pagar"          element={<PermissionRoute permission="Compras.Ver"><CuentasPagarPage /></PermissionRoute>} />
             <Route path="ordenes"                element={<OrdenesPage />} />
-            <Route path="notas-credito"          element={<NotasCreditoPage />} />
+            <Route path="notas-credito"          element={<PermissionRoute permission="NotasCredito.Ver"><NotasCreditoPage /></PermissionRoute>} />
+            <Route path="escuelas"               element={<PermissionRoute permission="Escuelas.Ver"><EscuelasPage /></PermissionRoute>} />
+            <Route path="menu-comida"            element={<PermissionRoute permission="MenuComida.Ver"><MenuComidaPage /></PermissionRoute>} />
+            <Route path="postres"                element={<PermissionRoute permission="Postres.Ver"><PostresPage /></PermissionRoute>} />
+            <Route path="conduces"               element={<PermissionRoute permission="Conduces.Ver"><ConducesPage /></PermissionRoute>} />
             <Route path="ncf"                    element={<AdminRoute><NcfPage /></AdminRoute>} />
-            <Route path="auditoria"              element={<AdminRoute><AuditoriaPage /></AdminRoute>} />
             <Route path="fiscal"                 element={<AdminRoute><FiscalPage /></AdminRoute>} />
           </Route>
         </Routes>

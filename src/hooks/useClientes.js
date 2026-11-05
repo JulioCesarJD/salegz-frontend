@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as clientesService from '../services/clientesService';
 
-export const useClientes = () => {
+export const useClientes = (params) => {
   return useQuery({
-    queryKey: ['clientes'],
-    queryFn: clientesService.getClientes,
+    queryKey: ['clientes', params],
+    queryFn: () => clientesService.getClientes(params),
   });
 };
 
@@ -41,5 +41,18 @@ export const useToggleEstadoCliente = () => {
     mutationFn: clientesService.toggleEstadoCliente,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['clientes'] }),
     onError: (e) => toast.error(e.response?.data?.message || 'Error al cambiar estado'),
+  });
+};
+
+export const useDeleteCliente = (onSuccessCallback) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: clientesService.deleteCliente,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clientes'] });
+      toast.success('Cliente eliminado');
+      if (onSuccessCallback) onSuccessCallback();
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al eliminar cliente'),
   });
 };
