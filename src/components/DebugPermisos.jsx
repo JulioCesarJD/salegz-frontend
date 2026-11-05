@@ -7,9 +7,9 @@ export function DebugPermisos() {
   const { permisos, loaded, currentUserId } = usePermisosStore()
 
   const tipoUsuarioLabel = {
-    0: 'Admin',
-    1: 'Normal',
-    3: 'SuperAdmin'
+    0: 'SuperAdmin',
+    1: 'Administrador',
+    2: 'Normal',
   }
 
   return (

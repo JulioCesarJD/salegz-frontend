@@ -1,7 +1,7 @@
 export const USER_ROLES = {
-  ADMIN: 0,
-  NORMAL: 1,
-  SUPERADMIN: 2,
+  SUPERADMIN: 0,
+  ADMIN: 1,
+  NORMAL: 2,
 }
 
 const parseUserType = (user) => {
@@ -21,7 +21,7 @@ export function isSuperAdmin(user) {
 
 export function getUserRoleLabel(user) {
   const tipo = parseUserType(user)
-  if (tipo === USER_ROLES.SUPERADMIN) return 'Superadmin'
+  if (tipo === USER_ROLES.SUPERADMIN) return 'SuperAdmin'
   if (tipo === USER_ROLES.ADMIN) return 'Administrador'
   if (tipo === USER_ROLES.NORMAL) return 'Normal'
   return 'Desconocido'

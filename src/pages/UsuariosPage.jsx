@@ -447,7 +447,7 @@ export function UsuariosPage() {
   })
 
   const guardarPermisos = useMutation({
-    mutationFn: (d) => api.put(`/api/usuarios/${d.usuarioId}/permisos`, d),
+    mutationFn: (d) => api.get(`/api/usuarios/${d.usuarioId}/permisos`, d),
     onSuccess: (_, d) => {
       qc.invalidateQueries({ queryKey: ['permisos', d.usuarioId] })
       toast.success('Permisos guardados')
