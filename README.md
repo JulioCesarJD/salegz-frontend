@@ -1,179 +1,163 @@
-# SalegZ Frontend
+﻿# SalegZ Frontend
 
-Sistema SaaS de gestion comercial construido con React y Vite.
+Frontend del sistema SaaS de gestión comercial de SalegZ, desarrollado con React + Vite para administrar clientes, productos, facturación, compras, pagos, cobranza y operaciones fiscales.
 
-## Stack Tecnologico
+## Características principales
 
-### Framework & Runtime
+- Autenticación con JWT y sesión persistent en localStorage
+- Rutas protegidas por tipo de usuario (admin vs no admin)
+- Dashboard con acceso administrativo
+- Módulos de facturación, cotizaciones, compras, gastos y cuadres
+- Gestión financiera avanzada: cuentas por cobrar, cuentas por pagar, notas de crédito y órdenes
+- Soporte fiscal y NCF
+- Auditoría de acciones del sistema
+- Tema oscuro/claro con Zustand
+- Cache y sincronización de datos con React Query
+- Notificaciones mediante Toasts
+- Impresión de documentos y comprobantes
 
-| Tecnologia | Version | Descripcion |
-|---|---|---|
-| React | 19.2 | Libreria principal de UI |
-| Vite | 8.0 | Bundler y servidor de desarrollo con HMR |
-| JavaScript (JSX) | ES Modules | Lenguaje base (sin TypeScript en produccion) |
+## Stack tecnológico
 
-### Estilos
+### Frontend
 
-| Tecnologia | Version | Descripcion |
-|---|---|---|
-| Tailwind CSS | 3.4 | Framework de utilidades CSS |
-| PostCSS | 8.5 | Procesador CSS (requerido por Tailwind) |
-| Autoprefixer | 10.4 | Prefijos de vendor automaticos |
+| Tecnología | Versión | Descripción |
+|---|---:|---|
+| React | 19.2 | Biblioteca principal para interfaces |
+| Vite | 8.0 | Bundler y servidor de desarrollo |
+| JavaScript (JSX) | ES Modules | Base del proyecto sin TypeScript en producción |
+| React Router DOM | 7.13 | Ruteo SPA y protección de rutas |
+| React Hook Form | 7.71 | Formularios y validaciones |
 
-- Dark mode habilitado con estrategia `class`
-- Fuente personalizada: Geist / Geist Mono
-- Animaciones custom: fade-in, slide-up, slide-in
-- Paleta de colores brand (verde)
+### Estado y datos
 
-### Estado Global
+| Tecnología | Versión | Descripción |
+|---|---:|---|
+| Zustand | 5.0 | Estado global para auth, permisos y tema |
+| TanStack React Query | 5.90 | Fetching, cache y sincronización |
+| Axios | 1.13 | Cliente HTTP con interceptores |
 
-| Tecnologia | Version | Descripcion |
-|---|---|---|
-| Zustand | 5.0 | Manejo de estado global (auth, theme, permisos) |
-| TanStack React Query | 5.90 | Cache de servidor, fetching y sincronizacion de datos |
+### UI / UX
 
-### Comunicacion con API
+| Tecnología | Versión | Descripción |
+|---|---:|---|
+| Tailwind CSS | 3.4 | Estilos utilitarios |
+| PostCSS | 8.5 | Procesamiento CSS |
+| Autoprefixer | 10.4 | Prefijos automáticos |
+| Lucide React | Latest | Iconografía SVG |
+| React Hot Toast | 2.6 | Notificaciones |
+| clsx | 2.1 | Clases condicionales |
 
-| Tecnologia | Version | Descripcion |
-|---|---|---|
-| Axios | 1.13 | Cliente HTTP con interceptors para JWT Bearer |
+### Calidad
 
-- API backend configurada via variable de entorno `VITE_API_URL`
-- Autenticacion JWT con tokens en localStorage
-- Redirect automatico a `/login` en respuestas 401
+| Tecnología | Versión | Descripción |
+|---|---:|---|
+| ESLint | 9.x | Linting del proyecto |
+| eslint-plugin-react-hooks | 7.0 | Reglas de React Hooks |
+| eslint-plugin-react-refresh | 0.5 | Reglas de refresh con Vite |
 
-### Routing & Formularios
+## Módulos del sistema
 
-| Tecnologia | Version | Descripcion |
-|---|---|---|
-| React Router DOM | 7.13 | Enrutamiento SPA con rutas protegidas |
-| React Hook Form | 7.71 | Manejo y validacion de formularios |
-
-### UI & UX
-
-| Tecnologia | Descripcion |
+| Módulo | Descripción |
 |---|---|
-| Lucide React | Iconos SVG |
-| React Hot Toast | Notificaciones toast |
-| clsx | Merge condicional de clases CSS |
-
-### Linting
-
-| Tecnologia | Version | Descripcion |
-|---|---|---|
-| ESLint | 9.x | Linter de codigo |
-| eslint-plugin-react-hooks | 7.0 | Reglas para React Hooks |
-| eslint-plugin-react-refresh | 0.5 | Reglas para React Refresh/HMR |
-
-## Arquitectura del Proyecto
-
-```
-src/
-  App.jsx                  # Punto de entrada, rutas y providers
-  lib/
-    api.js                 # Instancia de Axios con interceptors
-  store/
-    authStore.js           # Estado de autenticacion (Zustand)
-    themeStore.js          # Estado del tema oscuro/claro
-    permisosStore.js       # Estado de permisos de usuario
-  services/                # Llamadas HTTP al backend
-    clientesService.js
-    productosService.js
-    facturasService.js
-    cotizacionesService.js
-    comprasService.js
-    gastosService.js
-    cuadresService.js
-    categoriasService.js
-    inventarioService.js
-    commonService.js
-  hooks/                   # Custom hooks (React Query wrappers)
-    useClientes.js
-    useProductos.js
-    useFacturas.js
-    useCotizaciones.js
-    useCompras.js
-    useGastos.js
-    useCuadres.js
-    useCategorias.js
-    useInventario.js
-  pages/                   # Paginas/vistas principales
-    LoginPage.jsx
-    DashboardPage.jsx
-    WelcomePage.jsx
-    ClientesPage.jsx
-    ProductosPage.jsx
-    CategoriasPage.jsx
-    FacturasPage.jsx
-    CotizacionesPage.jsx
-    ComprasPage.jsx
-    GastosPage.jsx
-    CuadresPage.jsx
-    InventarioPage.jsx
-    ReportesPage.jsx
-    UsuariosPage.jsx
-    ConfiguracionPage.jsx
-    PerfilPage.jsx
-  components/
-    ProtectedRoute.jsx     # Guard de autenticacion
-    layout/
-      MainLayout.jsx       # Layout principal con sidebar
-      Sidebar.jsx          # Navegacion lateral
-    common/                # Componentes reutilizables
-      NumInput.jsx
-      PrecioSelectorModal.jsx
-    features/              # Componentes por modulo
-      clientes/
-      productos/
-      facturas/
-      cotizaciones/
-      compras/
-      gastos/
-      cuadres/
-      categorias/
-  utils/                   # Funciones utilitarias
-    auth.js
-    format.js
-    date.js
-    printFactura.js
-  constants/               # Constantes de configuracion
-    cuadres.jsx
-    facturacion.jsx
-```
-
-## Roles y Rutas
-
-- **Admin**: acceso completo (dashboard, compras, gastos, reportes, usuarios, configuracion)
-- **No-admin**: acceso limitado (welcome, clientes, productos, facturas, cotizaciones, cuadres, perfil)
-
-## Modulos del Sistema
-
-| Modulo | Descripcion |
-|---|---|
-| Clientes | Gestion de clientes |
-| Categorias | Categorias de productos |
-| Productos | Catalogo de productos |
-| Inventario | Control de inventario |
-| Facturas | Facturacion y cobros |
-| Cotizaciones | Cotizaciones a clientes |
+| Dashboard | Panel principal y resumen operativo |
+| Clientes | Gestión de clientes |
+| Categorías | Organización de productos |
+| Productos | Catálogo y estructura de inventario |
+| Inventario | Control de stock y movimientos |
+| Facturas | Emisión y administración de facturas |
+| Cotizaciones | Creación y seguimiento de cotizaciones |
 | Compras | Registro de compras a proveedores |
-| Gastos | Control de gastos con conceptos |
-| Cuadres | Cuadres de caja |
-| Reportes | Reportes del negocio |
-| Usuarios | Administracion de usuarios |
-| Configuracion | Ajustes del sistema |
+| Gastos | Control de gastos y conceptos |
+| Cuadres | Control de caja y cierres |
+| Cuentas por Cobrar | Seguimiento de clientes pendientes |
+| Cuentas por Pagar | Control de pagos a proveedores |
+| Órdenes | Gestión de órdenes internas/externas |
+| Notas de Crédito | Devoluciones y ajustes |
+| NCF | Gestión de comprobantes fiscales |
+| Reportes | Informes y análisis del negocio |
+| Usuarios | Administración de usuarios |
+| Configuración | Ajustes del sistema |
+| Perfil | Datos personales del usuario |
+| Auditoría | Registro de eventos del sistema |
+| Fiscal | Módulo fiscal del negocio |
 
-## Scripts
+## Roles y acceso
+
+- Admin TipoUsuario 0: acceso completo a módulos administrativos y operativos del sistema.
+- No admin TipoUsuario 1: acceso limitado a módulos de operación comercial y perfil personal.
+
+La aplicación valida permisos y redirige al usuario según su rol usando rutas protegidas.
+
+## Estructura principal del proyecto
 
 ```bash
-npm run dev      # Servidor de desarrollo
-npm run build    # Build de produccion
-npm run preview  # Preview del build
-npm run lint     # Ejecutar ESLint
+src/
+  App.jsx                 # Punto de entrada, rutas y providers
+  lib/
+    api.js                # Axios con interceptores JWT
+  store/
+    authStore.js          # Autenticación
+    themeStore.js         # Tema claro/oscuro
+    permisosStore.js      # Permisos del usuario
+  services/               # Servicios del backend
+  hooks/                  # Hooks personalizados con React Query
+  pages/                  # Páginas principales del sistema
+  components/
+    ProtectedRoute.jsx    # Guard de rutas
+    layout/                # Sidebar y layout principal
+    common/                # Componentes reutilizables
+    features/              # Módulos por funcionalidad
+  utils/                  # Utilidades y helpers
+  constants/              # Constantes del sistema
 ```
 
-## Variables de Entorno
+## Inicio rápido
 
-| Variable | Descripcion |
-|---|---|
-| `VITE_API_URL` | URL base del backend API |
+### Requisitos
+
+- Node.js 18+
+- npm o pnpm
+- Backend API disponible
+
+### Instalación
+
+```bash
+npm install
+```
+
+### Variables de entorno
+
+Crea un archivo `.env` en la raíz del proyecto con:
+
+```bash
+VITE_API_URL=http://localhost:3000/api
+```
+
+### Scripts
+
+```bash
+npm run dev      # Levanta el entorno de desarrollo
+npm run build    # Genera build de producción
+npm run preview   # Previsualiza el build
+npm run lint     # Ejecuta ESLint
+```
+
+## Flujo de autenticación
+
+- El usuario inicia sesión desde `/login`
+- El backend devuelve un token JWT
+- El token se guarda en `localStorage`
+- Axios intercepta peticiones para adjuntar el token
+- Si la API responde 401, la app redirige al login
+
+## Notas
+
+- El proyecto usa un enfoque de SPA con navegación protegida.
+- La UI está preparada para entorno SaaS con diseño moderno y área de administración.
+- La estructura modular facilita la extensión de nuevos módulos del negocio.
+
+## Contribución
+
+1. Crear una rama desde `main`
+2. Realizar cambios y validar con lint/build
+3. Abrir pull request con descripción clara del cambio

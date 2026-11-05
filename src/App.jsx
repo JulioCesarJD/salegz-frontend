@@ -3,39 +3,38 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from 'react-hot-toast'
 import { useEffect } from 'react'
 
-import { useThemeStore }      from './store/themeStore'
-import { useAuthStore }       from './store/authStore'
-import { usePermisosStore }   from './store/permisosStore'
-import { isAdminUser }        from './utils/auth'
-import { ProtectedRoute }     from './components/ProtectedRoute'
-import { MainLayout }         from './components/layout/MainLayout'
+import { useThemeStore } from './store/themeStore'
+import { useAuthStore } from './store/authStore'
+import { usePermisosStore } from './store/permisosStore'
+import { isAdminUser } from './utils/auth'
+import { ProtectedRoute } from './components/ProtectedRoute'
+import { MainLayout } from './components/layout/MainLayout'
 
-import { LoginPage }          from './pages/LoginPage'
-import { DashboardPage }      from './pages/DashboardPage'
-import { WelcomePage }        from './pages/WelcomePage'
-import { ClientesPage }       from './pages/ClientesPage'
-import { CategoriasPage }     from './pages/CategoriasPage'
-import { ProductosPage }      from './pages/ProductosPage'
-import { FacturasPage }       from './pages/FacturasPage'
-import { CotizacionesPage }   from './pages/CotizacionesPage'
-import { ComprasPage }        from './pages/ComprasPage'
-import { GastosPage }         from './pages/GastosPage'
-import { CuadresPage }        from './pages/CuadresPage'
-import { ReportesPage }       from './pages/ReportesPage'
-import { UsuariosPage }       from './pages/UsuariosPage'
-import { ConfiguracionPage }  from './pages/ConfiguracionPage'
-import { PerfilPage }         from './pages/PerfilPage'
-import { InventarioPage }     from './pages/InventarioPage'
+import { LoginPage } from './pages/LoginPage'
+import { DashboardPage } from './pages/DashboardPage'
+import { WelcomePage } from './pages/WelcomePage'
+import { ClientesPage } from './pages/ClientesPage'
+import { CategoriasPage } from './pages/CategoriasPage'
+import { ProductosPage } from './pages/ProductosPage'
+import { FacturasPage } from './pages/FacturasPage'
+import { CotizacionesPage } from './pages/CotizacionesPage'
+import { ComprasPage } from './pages/ComprasPage'
+import { GastosPage } from './pages/GastosPage'
+import { CuadresPage } from './pages/CuadresPage'
+import { ReportesPage } from './pages/ReportesPage'
+import { UsuariosPage } from './pages/UsuariosPage'
+import { ConfiguracionPage } from './pages/ConfiguracionPage'
+import { PerfilPage } from './pages/PerfilPage'
+import { InventarioPage } from './pages/InventarioPage'
 import { CuentaPorCobrarPage } from './pages/CuentaPorCobrarPage'
-import { CuentasPagarPage }   from './pages/CuentasPagarPage'
-import { OrdenesPage }        from './pages/OrdenesPage'
-import { NotasCreditoPage }   from './pages/NotasCreditoPage'
-import { NcfPage }            from './pages/NcfPage'
-import { AuditoriaPage }      from './pages/AuditoriaPage'
-import { FiscalPage }         from './pages/FiscalPage'
+import { CuentasPagarPage } from './pages/CuentasPagarPage'
+import { OrdenesPage } from './pages/OrdenesPage'
+import { NotasCreditoPage } from './pages/NotasCreditoPage'
+import { NcfPage } from './pages/NcfPage'
+import { AuditoriaPage } from './pages/AuditoriaPage'
+import { FiscalPage } from './pages/FiscalPage'
 
 import DesclosePage from './pages/DesclosePage'
-
 
 const qc = new QueryClient({ defaultOptions: { queries: { retry: 1, staleTime: 30_000 } } })
 
@@ -65,7 +64,17 @@ export default function App() {
   // Cargar permisos cuando el usuario se autentica
   useEffect(() => {
     if (user?.usuarioId) {
-      cargarPermisos(user.usuarioId, isAdminUser(user))
+      cargarPermisos(user.usuarioId, user).catch((err) => {
+        if (err instanceof Error && err.message === 'session_expired') {
+          // En lugar de cerrar sesión inmediatamente, navegar al login con retraso
+          // para que el estado actual se conserve un momento
+          localStorage.removeItem('sg_token')
+          localStorage.removeItem('sg_user')
+          setTimeout(() => {
+            window.location.href = '/login'
+          }, 500)
+        }
+      })
     }
   }, [user?.usuarioId])
 
@@ -102,14 +111,14 @@ export default function App() {
             <Route path="fiscal"                 element={<AdminRoute><FiscalPage /></AdminRoute>} />
           </Route>
         </Routes>
-      </BrowserRouter>
 
-      <Toaster position="top-center" toastOptions={{
-        style: {
-          background: 'var(--bg-card)', color: 'var(--text-primary)',
-          border: '1px solid var(--border)', borderRadius: '0.75rem', fontSize: '0.875rem',
-        },
-      }} />
+        <Toaster position="top-center" toastOptions={{
+          style: {
+            background: 'var(--bg-card)', color: 'var(--text-primary)',
+            border: '1px solid var(--border)', borderRadius: '0.75rem', fontSize: '0.875rem',
+          },
+        }} />
+      </BrowserRouter>
     </QueryClientProvider>
   )
 }

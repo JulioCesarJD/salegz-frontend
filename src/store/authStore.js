@@ -19,7 +19,7 @@ export const useAuthStore = create((set) => ({
       const user = { usuarioId: data.usuarioId, nombre: data.nombre, tipoUsuario: data.tipoUsuario }
       localStorage.setItem('sg_token', data.token)
       localStorage.setItem('sg_user',  JSON.stringify(user))
-      set({ token: data.token, user, isAuthenticated: true, loading: false })
+      set({ token: data.token, user, isAuthenticated: true, loading: false, modulos: data.modulos })
       return { ok: true, user }
     } catch (e) {
       set({ loading: false })
