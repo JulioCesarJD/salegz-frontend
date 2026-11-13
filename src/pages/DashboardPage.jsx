@@ -1,5 +1,7 @@
 import { DollarSign, Users, AlertTriangle, TrendingUp, Package, ShoppingBag, Calendar, HandCoins } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
+import { usePermiso } from '../hooks/usePermiso'
+import { isSuperAdmin } from '../utils/auth'
 import { useVentasRango, useCxCPendientes, useInventarioBajoMinimo } from '../hooks/useReportes'
 import { useProductos } from '../hooks/useProductos'
 import { useClientes } from '../hooks/useClientes'
@@ -40,6 +42,14 @@ const sumarVentas = (dias = []) =>
 
 export function DashboardPage() {
   const { user } = useAuthStore()
+  const { puedeVer } = usePermiso()
+  const isSuper = isSuperAdmin(user)
+
+  // ── Permisos: cada bloque del dashboard pide solo lo que usa ──
+  const puedeReportes = isSuper || puedeVer('Reportes.Ver')
+  const puedeProductos = isSuper || puedeVer('Productos.Ver')
+  const puedeClientes = isSuper || puedeVer('Clientes.Ver')
+
   // ── Fechas locales DENTRO del componente ──
   const today = new Date()
   const hoy = localDate(today)
@@ -49,14 +59,14 @@ export function DashboardPage() {
   const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches'
 
   // ── Reportes reales ──
-  const { data: ventasHoyRango = [] } = useVentasRango(hoy, hoy)
-  const { data: ventasMesRango = [] } = useVentasRango(inicioMes, hoy)
-  const { data: cxc = [] } = useCxCPendientes()
-  const { data: stockBajo = [] } = useInventarioBajoMinimo()
+  const { data: ventasHoyRango = [] } = useVentasRango(hoy, hoy, { enabled: puedeReportes })
+  const { data: ventasMesRango = [] } = useVentasRango(inicioMes, hoy, { enabled: puedeReportes })
+  const { data: cxc = [] } = useCxCPendientes({ enabled: puedeReportes })
+  const { data: stockBajo = [] } = useInventarioBajoMinimo({ enabled: puedeReportes })
 
   // ── Catálogos reales (se agregan localmente) ──
-  const { data: clientes = [] } = useClientes({ pageSize: 1000 })
-  const { data: productos = [] } = useProductos({ pageSize: 1000 })
+  const { data: clientes = [] } = useClientes({ pageSize: 1000 }, { enabled: puedeClientes })
+  const { data: productos = [] } = useProductos({ pageSize: 1000 }, { enabled: puedeProductos })
 
   const ventasHoy = sumarVentas(ventasHoyRango)
   const ventasMes = sumarVentas(ventasMesRango)
@@ -119,6 +129,7 @@ export function DashboardPage() {
       </div>
 
       {/* ── Ventas de HOY ── */}
+      {puedeReportes && (
       <div>
         <h2
           className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-2 sm:mb-3 flex items-center gap-2"
@@ -157,8 +168,10 @@ export function DashboardPage() {
           />
         </div>
       </div>
+      )}
 
       {/* ── Ventas del MES ── */}
+      {puedeReportes && (
       <div>
         <h2
           className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-2 sm:mb-3"
@@ -201,8 +214,10 @@ export function DashboardPage() {
           />
         </div>
       </div>
+      )}
 
       {/* ── Nuevos módulos ── */}
+      {puedeReportes && (
       <div>
         <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-2 sm:mb-3" style={{ color: 'var(--text-muted)' }}>
           Otros indicadores
@@ -214,8 +229,10 @@ export function DashboardPage() {
           <StatCard title="ITBIS del mes" value={fmt(ventasMes.itbis)} sub="Impuesto generado" icon={DollarSign} color="yellow" />
         </div>
       </div>
+      )}
 
       {/* ── Valor del inventario ── */}
+      {puedeProductos && (
       <div>
         <h2
           className="text-xs sm:text-sm font-bold uppercase tracking-wide mb-2 sm:mb-3"
@@ -299,8 +316,10 @@ export function DashboardPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Tablas responsivas ── */}
+      {puedeReportes && (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <div className="card">
           <div className="flex items-center justify-between mb-4">
@@ -411,6 +430,7 @@ export function DashboardPage() {
           )}
         </div>
       </div>
+      )}
     </div>
   )
 }

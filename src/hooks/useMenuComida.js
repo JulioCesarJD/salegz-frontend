@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as menuComidaService from '../services/menuComidaService';
 
-export const useMenuComida = (params) => {
+export const useMenuComida = (params, options = {}) => {
   return useQuery({
     queryKey: ['menu-comida', params],
     queryFn: () => menuComidaService.getMenuComida(params),
+    enabled: options.enabled ?? true,
   });
 };
 

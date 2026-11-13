@@ -17,8 +17,9 @@ export function ProductosPage() {
   const [modal,   setModal]   = useState(null)
   const [catModal, setCatModal] = useState(false)
 
-  const { data: prods = [], isLoading } = useProductos({ pageSize: 1000 })
-  const { data: cats = [] } = useCategorias({ pageSize: 1000 })
+  // Sin Productos.Ver no se hacen peticiones: evita el 403 y el toast redundante.
+  const { data: prods = [], isLoading } = useProductos({ pageSize: 1000 }, { enabled: puedeAcceder })
+  const { data: cats = [] } = useCategorias({ pageSize: 1000 }, { enabled: puedeAcceder })
 
   if (!puedeAcceder) {
     return (

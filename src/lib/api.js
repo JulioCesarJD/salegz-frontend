@@ -9,6 +9,7 @@ import {
   clearSession,
   SESSION_UPDATED_EVENT,
   SESSION_EXPIRED_EVENT,
+  PERMISSIONS_CHANGED_EVENT,
 } from './tokenStorage'
 
 const api = axios.create({
@@ -97,11 +98,14 @@ api.interceptors.response.use(
     // Login/refresh/logout ya muestran su propio mensaje en pantalla.
     if (isAuthUrl(url)) return Promise.reject(normalized)
 
-    // Manejo global mínimo; cada pantalla puede mostrar su propio mensaje.
+    // 403 → la sesión quedó desactualizada (p. ej. le revocaron un permiso).
+    // Se refresca el usuario y se avisa una sola vez.
     if (status === 403) {
-      toast.error(normalized.userMessage || 'No tienes permisos para realizar esta acción.', {
-        id: 'api-403',
-      })
+      window.dispatchEvent(new Event(PERMISSIONS_CHANGED_EVENT))
+      toast.error(
+        normalized.userMessage || 'No posees el permiso requerido para esta acción.',
+        { id: 'api-403' }
+      )
     } else if (status >= 500) {
       toast.error('Error del servidor. Intenta nuevamente en unos segundos.', {
         id: 'api-500',

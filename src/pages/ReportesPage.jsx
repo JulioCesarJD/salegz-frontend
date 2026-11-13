@@ -27,17 +27,19 @@ const sumar = (items = [], campo) =>
 export function ReportesPage() {
   const { puedeVer } = usePermiso()
   const puedeAcceder = puedeVer('verReportes')
+  // El bloque de inventario usa /api/productos, que exige Productos.Ver.
+  const puedeVerProductos = puedeVer('Productos.Ver')
 
   const today = new Date()
   const [desde, setDesde] = useState(localDate(new Date(today.getFullYear(), today.getMonth(), 1)))
   const [hasta, setHasta] = useState(localDate(today))
 
-  const { data: ventas = [] } = useVentasRango(desde, hasta)
-  const { data: cxc = [] } = useCxCPendientes()
-  const { data: stockBajo = [] } = useInventarioBajoMinimo()
-  const { data: gastos = [] } = useGastosPeriodo(desde, hasta)
-  const { data: tops = [] } = useProductosMasVendidos(desde, hasta)
-  const { data: productos = [] } = useProductos({ pageSize: 1000 })
+  const { data: ventas = [] } = useVentasRango(desde, hasta, { enabled: puedeAcceder })
+  const { data: cxc = [] } = useCxCPendientes({ enabled: puedeAcceder })
+  const { data: stockBajo = [] } = useInventarioBajoMinimo({ enabled: puedeAcceder })
+  const { data: gastos = [] } = useGastosPeriodo(desde, hasta, { enabled: puedeAcceder })
+  const { data: tops = [] } = useProductosMasVendidos(desde, hasta, { enabled: puedeAcceder })
+  const { data: productos = [] } = useProductos({ pageSize: 1000 }, { enabled: puedeAcceder && puedeVerProductos })
 
   if (!puedeAcceder) {
     return (

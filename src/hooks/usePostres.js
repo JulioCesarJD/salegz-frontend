@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as postresService from '../services/postresService';
 
-export const usePostres = (params) => {
+export const usePostres = (params, options = {}) => {
   return useQuery({
     queryKey: ['postres', params],
     queryFn: () => postresService.getPostres(params),
+    enabled: options.enabled ?? true,
   });
 };
 

@@ -3,10 +3,11 @@ import toast from 'react-hot-toast';
 import * as gastosService from '../services/gastosService';
 
 // --- Queries ---
-export const useGastos = (params) => {
+export const useGastos = (params, options = {}) => {
   return useQuery({
     queryKey: ['gastos', params],
     queryFn: () => gastosService.getGastos(params),
+    enabled: options.enabled ?? true,
   });
 };
 

@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as productosService from '../services/productosService';
 
-export const useProductos = (params) => {
+export const useProductos = (params, options = {}) => {
   return useQuery({
     queryKey: ['productos', params],
     queryFn: () => productosService.getProductos(params),
+    enabled: options.enabled ?? true,
   });
 };
 

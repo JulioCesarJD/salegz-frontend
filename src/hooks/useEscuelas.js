@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as escuelasService from '../services/escuelasService';
 
-export const useEscuelas = (params) => {
+export const useEscuelas = (params, options = {}) => {
   return useQuery({
     queryKey: ['escuelas', params],
     queryFn: () => escuelasService.getEscuelas(params),
+    enabled: options.enabled ?? true,
   });
 };
 

@@ -52,3 +52,5 @@ export function clearSession() {
 
 export const SESSION_UPDATED_EVENT = 'sg:session-updated'
 export const SESSION_EXPIRED_EVENT = 'sg:session-expired'
+// La API rechazó una acción por permisos: hay que volver a leer el usuario.
+export const PERMISSIONS_CHANGED_EVENT = 'sg:permissions-changed'

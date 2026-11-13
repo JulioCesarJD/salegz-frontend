@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as cuentasPagarService from '../services/cuentasPagarService';
 
-export const useCuentasPagar = (estado) => {
-  return useQuery({ queryKey: ['cuentas-pagar', estado], queryFn: () => cuentasPagarService.getCuentasPagar(estado) });
+export const useCuentasPagar = (estado, options = {}) => {
+  return useQuery({ queryKey: ['cuentas-pagar', estado], queryFn: () => cuentasPagarService.getCuentasPagar(estado), enabled: options.enabled ?? true });
 };
 
 export const useCuentaPagar = (id) => {

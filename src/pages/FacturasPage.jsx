@@ -95,7 +95,7 @@ export function FacturasPage() {
   const [pinPendiente, setPinPendiente] = useState(null);
   // ────────────────────────────────────────────────────────────────────────────
 
-  const { data: facturas = [], isLoading } = useFacturas(estado, desde, hasta);
+  const { data: facturas = [], isLoading } = useFacturas(estado, desde, hasta, { enabled: puedeVer("verFacturas") });
 
   const cancelarMutation = useCancelarFactura();
 

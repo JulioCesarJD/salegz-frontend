@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { getStoredUser } from '../lib/tokenStorage'
+import { getStoredUser, PERMISSIONS_CHANGED_EVENT } from '../lib/tokenStorage'
 
 // Código especial: solo exige estar autenticado.
 export const AUTHENTICATED = '__auth__'

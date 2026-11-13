@@ -9,6 +9,7 @@ import {
   clearSession,
   SESSION_UPDATED_EVENT,
   SESSION_EXPIRED_EVENT,
+  PERMISSIONS_CHANGED_EVENT,
 } from '../lib/tokenStorage'
 import { usePermisosStore } from './permisosStore'
 
@@ -99,5 +100,12 @@ if (typeof window !== 'undefined') {
       loading: false,
     })
     usePermisosStore.getState().reset()
+  })
+
+  window.addEventListener(PERMISSIONS_CHANGED_EVENT, () => {
+    const user = getStoredUser()
+    if (!user) return
+    usePermisosStore.getState().cargarPermisos(user)
+    useAuthStore.setState({ user })
   })
 }

@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as clientesService from '../services/clientesService';
 
-export const useClientes = (params) => {
+export const useClientes = (params, options = {}) => {
   return useQuery({
     queryKey: ['clientes', params],
     queryFn: () => clientesService.getClientes(params),
+    enabled: options.enabled ?? true,
   });
 };
 

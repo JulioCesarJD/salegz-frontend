@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as ordenesService from '../services/ordenesService';
 
-export const useOrdenes = (estado) => {
-  return useQuery({ queryKey: ['ordenes', estado], queryFn: () => ordenesService.getOrdenes(estado) });
+export const useOrdenes = (estado, options = {}) => {
+  return useQuery({ queryKey: ['ordenes', estado], queryFn: () => ordenesService.getOrdenes(estado), enabled: options.enabled ?? true });
 };
 
 export const useOrden = (id) => {

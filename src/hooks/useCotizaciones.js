@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as cotizService from '../services/cotizacionesService';
 
-export const useCotizaciones = (params) => {
+export const useCotizaciones = (params, options = {}) => {
   return useQuery({
     queryKey: ['cotizaciones', params],
     queryFn: () => cotizService.getCotizaciones(params),
+    enabled: options.enabled ?? true,
   });
 };
 

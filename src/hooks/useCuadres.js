@@ -7,10 +7,11 @@ import {
 } from '../services/cuadresService';
 import toast from 'react-hot-toast';
 
-export const useCuadres = (desde, hasta) => {
+export const useCuadres = (desde, hasta, options = {}) => {
   return useQuery({
     queryKey: ['cuadres', desde, hasta],
     queryFn: () => getCuadres({ desde, hasta }),
+    enabled: options.enabled ?? true,
   });
 };
 

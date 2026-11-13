@@ -2,10 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as conducesService from '../services/conducesService';
 
-export const useConduces = (params) => {
+export const useConduces = (params, options = {}) => {
   return useQuery({
     queryKey: ['conduces', params],
     queryFn: () => conducesService.getConduces(params),
+    enabled: options.enabled ?? true,
   });
 };
 

@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as cuentasCobrarService from '../services/cuentasCobrarService';
 
-export const useCuentasCobrar = (estado) => {
-  return useQuery({ queryKey: ['cuentas-cobrar', estado], queryFn: () => cuentasCobrarService.getCuentasCobrar(estado) });
+export const useCuentasCobrar = (estado, options = {}) => {
+  return useQuery({ queryKey: ['cuentas-cobrar', estado], queryFn: () => cuentasCobrarService.getCuentasCobrar(estado), enabled: options.enabled ?? true });
 };
 
 export const useCuentaCobrar = (id) => {

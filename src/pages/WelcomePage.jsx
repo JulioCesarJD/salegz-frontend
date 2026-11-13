@@ -23,7 +23,7 @@ export function WelcomePage() {
   const hora  = today.getHours()
   const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches'
 
-  const { data: stockBajo = [] } = useInventarioBajoMinimo()
+  const { data: stockBajo = [] } = useInventarioBajoMinimo({ enabled: puedeVer('Reportes.Ver') })
 
   return (
     <div className="space-y-6">

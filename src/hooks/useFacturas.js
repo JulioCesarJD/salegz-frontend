@@ -20,7 +20,7 @@ export const TIPO_COMPROBANTE_MAP = {
  * Filtros reales enviados: estado, fechaDesde, fechaHasta, search.
  * `soloMios`, `usuarioId` y `tipoComprobante` no existen en la API.
  */
-export const useFacturas = (estado, desde, hasta, soloMios, usuarioId, tipoComprobante) => {
+export const useFacturas = (estado, desde, hasta, soloMios, usuarioId, tipoComprobante, options = {}) => {
   return useQuery({
     queryKey: ['facturas', estado, desde, hasta, soloMios, usuarioId, tipoComprobante],
     queryFn: () =>
@@ -29,6 +29,7 @@ export const useFacturas = (estado, desde, hasta, soloMios, usuarioId, tipoCompr
         fechaDesde: desde,
         fechaHasta: hasta,
       }),
+    enabled: options.enabled ?? true,
   });
 };
 

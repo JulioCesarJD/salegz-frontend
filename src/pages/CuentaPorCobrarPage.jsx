@@ -14,7 +14,7 @@ export function CuentaPorCobrarPage() {
   const [formAbono, setFormAbono] = useState({ monto: '', fecha: new Date().toISOString().split('T')[0], metodoPago: 'Efectivo', referencia: '' });
   const [expanded, setExpanded] = useState(null);
 
-  const { data: cuentas = [], isLoading } = useCuentasCobrar(filtro);
+  const { data: cuentas = [], isLoading } = useCuentasCobrar(filtro, { enabled: puedeVer('verCuentaPorCobrar') });
   const { data: abonos } = useAbonosByFactura(expanded);
   const aplicarAbono = useAplicarAbono(() => { setModalAbono(null); setFormAbono({ monto: '', fecha: new Date().toISOString().split('T')[0], metodoPago: 'Efectivo', referencia: '' }); });
 

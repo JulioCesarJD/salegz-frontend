@@ -14,8 +14,8 @@ export function CuentasPagarPage() {
   const [modalPago, setModalPago] = useState(null);
   const [formPago, setFormPago] = useState({ compraId: '', monto: '', fecha: new Date().toISOString().split('T')[0], metodoPago: 'Efectivo', referencia: '' });
 
-  const { data: cuentas = [], isLoading } = useCuentasPagar(filtroEstado);
-  const { data: compras = [] } = useCompras('');
+  const { data: cuentas = [], isLoading } = useCuentasPagar(filtroEstado, { enabled: puedeVer('verCuentasPagar') });
+  const { data: compras = [] } = useCompras('', { enabled: puedeVer('verCuentasPagar') });
   const registrarPago = useRegistrarPagoProveedor(() => { setModalPago(null); setFormPago({ compraId: '', monto: '', fecha: new Date().toISOString().split('T')[0], metodoPago: 'Efectivo', referencia: '' }); });
 
   const pendientes = cuentas.filter(c => c.estado === 1);
