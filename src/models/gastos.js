@@ -1,4 +1,5 @@
 /**
+ * No hay catálogo de conceptos de gasto; la descripción va en el gasto.
  * @typedef {Object} GastoDetalle
  * @property {number} gastosDetalleId
  * @property {number|null} usuarioId
@@ -17,6 +18,7 @@
  */
 
 /**
+ * PUT /api/gastos/{id} reemplaza los detalles por los enviados.
  * @typedef {Object} GastoCreateRequest
  * @property {string} descripcion
  * @property {{usuarioId:number|null,subTotal:number,itbis:number,comprobante:string|null}[]} detalles

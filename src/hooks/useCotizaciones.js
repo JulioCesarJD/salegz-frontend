@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as cotizService from '../services/cotizacionesService';
 
-export const useCotizaciones = () => {
+export const useCotizaciones = (params) => {
   return useQuery({
-    queryKey: ['cotizaciones'],
-    queryFn: cotizService.getCotizaciones,
+    queryKey: ['cotizaciones', params],
+    queryFn: () => cotizService.getCotizaciones(params),
   });
 };
 
@@ -30,6 +30,32 @@ export const useCreateCotizacion = (onSuccessCallback) => {
   });
 };
 
+export const useActualizarCotizacion = (onSuccessCallback) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ cotizacionId, data }) => cotizService.updateCotizacion(cotizacionId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cotizaciones'] });
+      qc.invalidateQueries({ queryKey: ['cotizacion'] });
+      toast.success('Cotización actualizada');
+      if (onSuccessCallback) onSuccessCallback();
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al actualizar cotización'),
+  });
+};
+
+export const useDeleteCotizacion = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: cotizService.deleteCotizacion,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cotizaciones'] });
+      toast.success('Cotización eliminada');
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al eliminar cotización'),
+  });
+};
+
 /** POST /api/cotizaciones/{id}/facturar */
 export const useConvertirCotizacion = (onSuccessCallback) => {
   const qc = useQueryClient();
@@ -42,17 +68,5 @@ export const useConvertirCotizacion = (onSuccessCallback) => {
       if (onSuccessCallback) onSuccessCallback(res);
     },
     onError: (e) => toast.error(e.response?.data?.message || 'Error al facturar'),
-  });
-};
-
-/** @deprecated La API no expone edición de cotizaciones. */
-export const useActualizarCotizacion = (onSuccessCallback) => {
-  return useMutation({
-    mutationFn: cotizService.updateCotizacion,
-    onSuccess: () => {
-      toast.success('Cotización actualizada');
-      if (onSuccessCallback) onSuccessCallback();
-    },
-    onError: (e) => toast.error(e.response?.data?.message || e.message || 'Error al actualizar'),
   });
 };

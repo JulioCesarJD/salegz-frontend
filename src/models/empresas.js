@@ -29,8 +29,15 @@
  */
 
 /**
- * `PUT /api/controles/{empresaId}` existe pero actualmente es un stub que solo responde ok.
+ * GET/PUT /api/controles/{empresaId} responden el ControlesDto.
  * @typedef {Object} ControlesEmpresa
+ * @property {number} controlesId
+ * @property {number|null} limiteDiaPago
+ * @property {number|null} limiteConteoFiscal
+ * @property {number|null} limiteConteoConsumo
+ * @property {number|null} limiteConteoRegimenEspecial
+ * @property {number|null} limiteConteoGubernamental
+ * @property {number} itbis
  */
 
 export const EMPRESA_ENDPOINTS = Object.freeze({

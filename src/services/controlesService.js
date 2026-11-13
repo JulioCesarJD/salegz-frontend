@@ -9,7 +9,7 @@ export const getControles = async (empresaId) => {
 
 /**
  * PUT /api/controles/{empresaId}
- * El controlador actualmente es un stub que responde `{ message: "ok" }`.
+ * Responde el ControlesDto actualizado (la API ya no es stub).
  */
 export const updateControles = async (empresaId, data) => {
   const { data: result } = await api.put(

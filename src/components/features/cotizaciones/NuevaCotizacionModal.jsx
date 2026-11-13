@@ -58,14 +58,9 @@ export function NuevaCotizacionModal({ onClose }) {
     if (fields.length === 0) { toast.error('Agrega al menos un producto'); return; }
     createMutation.mutate({
       clienteId: clienteSel?.clienteId || null,
-      usuarioId: user?.usuarioId,
-      total,
-      itbis: itbs,
       detalles: data.detalles.map(d => ({
         productoId: d.productoId,
         cantidad: parseFloat(d.cantidad || 0),
-        subTotal: parseFloat(d.cantidad || 0) * parseFloat(d.precio || 0),
-        itbis: Number(d.itbis) === 1 ? parseFloat(d.cantidad || 0) * parseFloat(d.precio || 0) * itbsPct : 0,
       })),
     });
   };

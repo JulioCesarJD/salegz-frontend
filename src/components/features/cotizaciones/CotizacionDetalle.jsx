@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { ArrowRightCircle, Printer, Pencil } from 'lucide-react';
 import { useCotizacion, useConvertirCotizacion } from '../../../hooks/useCotizaciones';
 import { useEmpresaInfo } from '../../../hooks/useFacturas';
-import { TIPO_COMPROBANTE, METODOS_PAGO } from '../../../constants/facturacion';
 import { fmt } from '../../../utils/format';
 import { EditarCotizacionModal } from './EditarCotizacionModal';
 // import { printCotizacion } from '../../../utils/print/printCotizacion'
@@ -15,9 +14,6 @@ export function CotizacionDetalle({ cotizacionId, onClose }) {
   const convertirMutation = useConvertirCotizacion(() => onClose());
 
   const [confirmConvertir, setConfirmConvertir] = useState(false);
-  const [tipoPago, setTipoPago] = useState('Efectivo');
-  const [tipoComprobante, setTipoComprobante] = useState(1);
-
   const [editando, setEditando] = useState(false);
 
   const handlePrint = () => {
@@ -50,7 +46,7 @@ export function CotizacionDetalle({ cotizacionId, onClose }) {
         {/* Info */}
         <div className="grid grid-cols-2 gap-3 mb-5">
           {[
-            ['Cliente',  c?.nombreCliente || 'Consumidor Final'],
+            ['Cliente',  c?.clienteId != null ? `Cliente #${c.clienteId}` : 'Consumidor Final'],
             ['Usuario',  c?.usuario],
             ['Total',    fmt(c?.total)],
             ['ITBIS',    fmt(c?.itbis)],
@@ -76,7 +72,7 @@ export function CotizacionDetalle({ cotizacionId, onClose }) {
             <tbody>
               {c?.detalles?.map((d, i) => (
                 <tr key={i}>
-                  <td className="font-medium">{d.producto}</td>
+                  <td className="font-medium">{d.productoDescripcion || d.producto || '—'}</td>
                   <td className="text-right tabular-nums">{d.cantidad}</td>
                   <td className="text-right tabular-nums">{fmt(d.itbis)}</td>
                   <td className="text-right font-semibold tabular-nums">{fmt(d.subTotal)}</td>
@@ -126,37 +122,16 @@ export function CotizacionDetalle({ cotizacionId, onClose }) {
           
         ) : (
           <div className="border rounded-xl p-4 space-y-3" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-tertiary)' }}>
-            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Configurar factura
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Se creará la factura desde esta cotización (tipo de factura según la cotización).
             </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="label">Tipo de pago</label>
-                <select className="input" value={tipoPago} onChange={e => setTipoPago(e.target.value)}>
-                  {METODOS_PAGO.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="label">Comprobante</label>
-                <select className="input" value={tipoComprobante} onChange={e => setTipoComprobante(parseInt(e.target.value))}>
-                  {TIPO_COMPROBANTE.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </div>
-            </div>
             <div className="flex gap-3 pt-1">
               <button onClick={() => setConfirmConvertir(false)} className="btn-secondary flex-1">
                 Cancelar
               </button>
               <button
                 disabled={convertirMutation.isPending}
-                onClick={() => convertirMutation.mutate({
-                  cotizacionId:    c.cotizacionId,
-                  empresaId:       1,
-                  tipoPago,
-                  pagado:          0,
-                  tarjeta:         tipoPago === 'Tarjeta',
-                  tipoComprobante,
-                })}
+                onClick={() => convertirMutation.mutate(c.cotizacionId)}
                 className="btn-primary flex-1"
               >
                 {convertirMutation.isPending ? 'Convirtiendo...' : `Crear factura por ${fmt(c?.total)}`}

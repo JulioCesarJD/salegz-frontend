@@ -1,5 +1,5 @@
 import api from '../lib/api'
-import { cleanParams, notSupported, unwrapPaged } from './_helpers'
+import { cleanParams, unwrapPaged } from './_helpers'
 import { GASTO_ENDPOINTS } from '../models/gastos'
 
 /** GET /api/gastos?search=&fechaDesde=&fechaHasta=&page=&pageSize= */
@@ -22,26 +22,36 @@ export const getGastoById = async (gastosId) => {
   return data
 }
 
-/** POST /api/gastos */
+/** POST /api/gastos — { descripcion, detalles: [{ usuarioId?, subTotal, itbis, comprobante? }] } */
 export const createGasto = async (data) => {
-  const { data: created } = await api.post(GASTO_ENDPOINTS.base, data)
+  const { data: created } = await api.post(GASTO_ENDPOINTS.base, {
+    descripcion: data.descripcion ?? '',
+    detalles: (data.detalles ?? []).map((d) => ({
+      usuarioId: d.usuarioId ?? null,
+      subTotal: parseFloat(d.subTotal) || 0,
+      itbis: parseFloat(d.itbis) || 0,
+      comprobante: d.comprobante ?? null,
+    })),
+  })
   return created
+}
+
+/** PUT /api/gastos/{id} — reemplaza los detalles por los enviados. */
+export const updateGasto = async (gastosId, data) => {
+  const { data: updated } = await api.put(`${GASTO_ENDPOINTS.base}/${gastosId}`, {
+    descripcion: data.descripcion ?? '',
+    detalles: (data.detalles ?? []).map((d) => ({
+      usuarioId: d.usuarioId ?? null,
+      subTotal: parseFloat(d.subTotal) || 0,
+      itbis: parseFloat(d.itbis) || 0,
+      comprobante: d.comprobante ?? null,
+    })),
+  })
+  return updated
 }
 
 export const deleteGasto = async (gastosId) => {
   await api.delete(`${GASTO_ENDPOINTS.base}/${gastosId}`)
 }
-
-/** La API no expone actualización de gastos. */
-export const updateGasto = () => notSupported('Editar un gasto')
-
-/**
- * Los "conceptos de gasto" no existen en la API actual.
- * Se conservan como stubs explícitos para no llamar endpoints inexistentes.
- */
-export const getConsumos = () => notSupported('El catálogo de conceptos de gasto')
-export const createConsumo = () => notSupported('Crear conceptos de gasto')
-export const updateConsumo = () => notSupported('Editar conceptos de gasto')
-export const searchConsumos = () => Promise.resolve([])
 
 export { GASTO_ENDPOINTS }

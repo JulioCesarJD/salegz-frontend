@@ -1,13 +1,11 @@
 import React from 'react';
 import { useForm } from 'react-hook-form';
-import { useAuthStore } from '../../../store/authStore';
 import { fmt } from '../../../utils/format';
 import { NumInput } from '../../common/NumInput';
 import { useSaldarCompra } from '../../../hooks/useCompras';
 
 export function SaldarModal({ compra, onClose }) {
   const { register, handleSubmit } = useForm();
-  const { user } = useAuthStore();
   const saldarMutation = useSaldarCompra(() => onClose());
 
   return (
@@ -16,17 +14,34 @@ export function SaldarModal({ compra, onClose }) {
         <h2 className="text-lg font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Registrar pago</h2>
         <p className="text-sm mb-5" style={{ color: 'var(--text-muted)' }}>
           Compra #{compra.compraId} · <strong className="text-red-500">{fmt(compra.total)}</strong>
+          <span className="block text-xs mt-1">Saldo pendiente: {fmt(compra.saldoPendiente ?? compra.total)}</span>
         </p>
         <form onSubmit={handleSubmit(d => saldarMutation.mutate({
-          compraId:  compra.compraId,
-          usuarioId: user?.usuarioId,
-          monto:     parseFloat(d.monto),
+          compraId: compra.compraId,
+          data: {
+            monto: parseFloat(d.monto),
+            metodoPago: d.metodoPago ? parseInt(d.metodoPago, 10) : null,
+            descripcionPago: d.descripcionPago?.trim() || null,
+          },
         }))} className="space-y-4">
           <div>
             <label className="label">Monto a abonar *</label>
             <NumInput className="input text-right text-lg font-bold"
               placeholder="0.00"
               {...register('monto', { required: true, min: 0.01 })} />
+          </div>
+          <div>
+            <label className="label">Método de pago</label>
+            <select className="input" {...register('metodoPago')}>
+              <option value="">Efectivo</option>
+              <option value="2">Cheque</option>
+              <option value="3">Tarjeta</option>
+              <option value="4">Transferencia</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Descripción</label>
+            <input className="input" placeholder="Referencia o nota (opcional)" {...register('descripcionPago')} />
           </div>
           <div className="flex gap-3">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancelar</button>

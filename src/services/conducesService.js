@@ -22,6 +22,42 @@ export const getConduceById = async (conduceId) => {
   return data
 }
 
+/** POST /api/conduces */
+export const createConduce = async (data) => {
+  const { data: result } = await api.post(CONDUCE_ENDPOINTS.base, {
+    numeroConduce: data.numeroConduce ?? null,
+    escuelaId: data.escuelaId ?? null,
+    menuComidaId: data.menuComidaId ?? null,
+    postreId: data.postreId ?? null,
+    fecha: data.fecha ?? null,
+    observaciones: data.observaciones ?? null,
+    edicionReceta: data.edicionReceta ?? null,
+    edicionPostre: data.edicionPostre ?? null,
+    estado: data.estado ?? 0,
+  })
+  return result
+}
+
+/** PUT /api/conduces/{id} */
+export const updateConduce = async (conduceId, data) => {
+  const { data: result } = await api.put(`${CONDUCE_ENDPOINTS.base}/${conduceId}`, {
+    numeroConduce: data.numeroConduce ?? null,
+    escuelaId: data.escuelaId ?? null,
+    menuComidaId: data.menuComidaId ?? null,
+    postreId: data.postreId ?? null,
+    fecha: data.fecha ?? null,
+    observaciones: data.observaciones ?? null,
+    edicionReceta: data.edicionReceta ?? null,
+    edicionPostre: data.edicionPostre ?? null,
+    estado: data.estado ?? undefined,
+  })
+  return result
+}
+
+export const deleteConduce = async (conduceId) => {
+  await api.delete(`${CONDUCE_ENDPOINTS.base}/${conduceId}`)
+}
+
 /** POST /api/conduces/generar-jornada */
 export const generarJornada = async ({ fecha, escuelasSinClase = [] }) => {
   const { data } = await api.post(CONDUCE_ENDPOINTS.generarJornada, {

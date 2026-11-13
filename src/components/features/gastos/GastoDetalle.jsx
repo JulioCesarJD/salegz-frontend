@@ -8,6 +8,8 @@ export function GastoDetalle({ gastoId, onClose }) {
   const { data: g, isLoading } = useGasto(gastoId);
   const [editando, setEditando] = useState(false);
 
+  const totalDe = (det) => (det || []).reduce((s, d) => s + (d.subTotal || 0) + (d.itbis || 0), 0);
+
   if (isLoading) return (
     <div className="modal-overlay">
       <div className="modal-box max-w-lg flex items-center justify-center py-12">
@@ -23,34 +25,41 @@ export function GastoDetalle({ gastoId, onClose }) {
           <div>
             <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Gasto #{g?.gastosId}</h2>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              {new Date(g?.fecha).toLocaleDateString('es-DO', { dateStyle: 'full' })}
+              {g?.fechaCreacion ? new Date(g.fechaCreacion).toLocaleDateString('es-DO', { dateStyle: 'full' }) : ''}
             </p>
           </div>
           <button onClick={onClose} className="btn-ghost btn-icon text-lg leading-none rounded-lg">×</button>
         </div>
 
         <div className="grid grid-cols-2 gap-3 mb-5">
-          {[['Usuario', g?.usuario], ['Total', fmt(g?.total)]].map(([l, v]) => (
+          {[['Descripción', g?.descripcion], ['Total', fmt(totalDe(g?.detalles))]].map(([l, v]) => (
             <div key={l} className="p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
               <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{l}</p>
-              <p className="font-semibold text-sm mt-0.5" style={{ color: 'var(--text-primary)' }}>{v}</p>
+              <p className="font-semibold text-sm mt-0.5" style={{ color: 'var(--text-primary)' }}>{v || '—'}</p>
             </div>
           ))}
         </div>
 
         <div className="space-y-2 mb-5">
-          {g?.detalles?.map((d, i) => (
-            <div key={i} className="flex justify-between items-center p-3 rounded-lg"
+          {(g?.detalles || []).map((d, i) => (
+            <div key={d.gastosDetalleId ?? i} className="flex justify-between items-center p-3 rounded-lg"
               style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{d.descripcion}</span>
-              <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>{fmt(d.monto)}</span>
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                {d.comprobante || 'Detalle'}
+              </span>
+              <span className="text-sm text-secondary tabular-nums" style={{ color: 'var(--text-secondary)' }}>
+                {fmt(d.subTotal)} + ITBIS {fmt(d.itbis)}
+              </span>
+              <span className="text-sm font-bold tabular-nums" style={{ color: 'var(--text-primary)' }}>
+                {fmt((d.subTotal || 0) + (d.itbis || 0))}
+              </span>
             </div>
           ))}
         </div>
 
         <div className="flex justify-between border-t pt-4 mb-5" style={{ borderColor: 'var(--border)' }}>
           <span className="font-bold" style={{ color: 'var(--text-primary)' }}>Total</span>
-          <span className="text-xl font-extrabold tabular-nums" style={{ color: 'var(--text-primary)' }}>{fmt(g?.total)}</span>
+          <span className="text-xl font-extrabold tabular-nums" style={{ color: 'var(--text-primary)' }}>{fmt(totalDe(g?.detalles))}</span>
         </div>
 
         <div className="flex gap-3">

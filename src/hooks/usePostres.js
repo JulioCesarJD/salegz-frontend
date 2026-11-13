@@ -2,10 +2,18 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as postresService from '../services/postresService';
 
-export const usePostres = () => {
+export const usePostres = (params) => {
   return useQuery({
-    queryKey: ['postres'],
-    queryFn: postresService.getPostres,
+    queryKey: ['postres', params],
+    queryFn: () => postresService.getPostres(params),
+  });
+};
+
+export const usePostre = (postreId) => {
+  return useQuery({
+    queryKey: ['postre', postreId],
+    queryFn: () => postresService.getPostreById(postreId),
+    enabled: !!postreId,
   });
 };
 
@@ -19,5 +27,31 @@ export const useCreatePostre = (onSuccess) => {
       onSuccess?.();
     },
     onError: (e) => toast.error(e.response?.data?.message || 'Error al registrar postre'),
+  });
+};
+
+export const useUpdatePostre = (onSuccess) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ postreId, data }) => postresService.updatePostre(postreId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['postres'] });
+      toast.success('Postre actualizado');
+      onSuccess?.();
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al actualizar postre'),
+  });
+};
+
+export const useDeletePostre = (onSuccess) => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: postresService.deletePostre,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['postres'] });
+      toast.success('Postre eliminado');
+      onSuccess?.();
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al eliminar postre'),
   });
 };

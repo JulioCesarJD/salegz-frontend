@@ -2,10 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as notasCreditoService from '../services/notasCreditoService';
 
-export const useNotasCredito = () => {
+export const useNotasCredito = (params) => {
   return useQuery({
-    queryKey: ['notas-credito'],
-    queryFn: notasCreditoService.getNotasCredito,
+    queryKey: ['notas-credito', params],
+    queryFn: () => notasCreditoService.getNotasCredito(params),
   });
 };
 
@@ -28,17 +28,5 @@ export const useCreateNotaCredito = (onSuccess) => {
       onSuccess?.();
     },
     onError: (e) => toast.error(e.response?.data?.message || 'Error al crear nota de crédito'),
-  });
-};
-
-/** @deprecated La API no expone cancelación de notas de crédito. */
-export const useCancelarNotaCredito = (onSuccess) => {
-  return useMutation({
-    mutationFn: notasCreditoService.cancelarNotaCredito,
-    onSuccess: () => {
-      toast.success('Nota de crédito cancelada');
-      onSuccess?.();
-    },
-    onError: (e) => toast.error(e.message || 'Error al cancelar nota de crédito'),
   });
 };

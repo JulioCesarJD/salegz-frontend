@@ -25,9 +25,9 @@ export function EditarCotizacionModal({ cotizacion, onClose, onSaveSuccess }) {
     if (cotizacion?.detalles) {
       setDetalles(cotizacion.detalles.map(d => ({
         productoId: d.productoId,
-        producto:   d.producto ?? d.descripcion,
+        producto:   d.productoDescripcion ?? d.producto ?? d.descripcion,
         cantidad:   d.cantidad,
-        precio:     d.precio ?? (d.subTotal / d.cantidad),
+        precio:     d.precio ?? (d.cantidad ? d.subTotal / d.cantidad : 0),
         itbsPorc:   d.itbsPorc ?? 0,
         costo:      d.costo ?? 0,
         comision:   d.comision ?? 0,
@@ -105,21 +105,14 @@ export function EditarCotizacionModal({ cotizacion, onClose, onSaveSuccess }) {
   actualizarMutation.mutate({
     cotizacionId: cotizacion.cotizacionId,
     data: {
-       nombreCliente: cotizacion.nombreCliente,
-      itbis:    itbs,
-      total,
-      detalles: detalles.map(d => {
-        const base    = d.precio * d.cantidad;
-        const itbsDet = base * (d.itbsPorc / 100);
-        return {
-          productoId: d.productoId,
-          cantidad:   d.cantidad,
-          subTotal:   base + itbsDet,
-          itbs:       itbsDet,
-          costo:      d.costo,
-          comision:   d.comision,
-        };
-      }),
+      clienteId: cotizacion.clienteId ?? null,
+      tipoFactura: cotizacion.tipoFactura ?? null,
+      asunto: cotizacion.asunto ?? null,
+      fechaVencimiento: cotizacion.fechaVencimiento ?? null,
+      detalles: detalles.map(d => ({
+        productoId: d.productoId,
+        cantidad: d.cantidad,
+      })),
     },
   });
 };

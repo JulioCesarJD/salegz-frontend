@@ -11,7 +11,8 @@
 /**
  * Tipo: 0 = Contado, 1 = Crédito.
  * Estado: 1 = Activo, 2 = Saldado, 3 = Cancelado.
- * La API calcula `saldoPendiente` como el total (no hay pagos parciales).
+ * Compra no tiene MontoPagado: el saldo = Total − Σ abonos
+ * (CuentaPorPagarDetalle con MetodoPago informado).
  * @typedef {Object} Compra
  * @property {number} compraId
  * @property {number|null} clienteId
@@ -35,4 +36,5 @@
 export const COMPRA_ENDPOINTS = Object.freeze({
   base: '/api/compras',
   cancelar: (id) => `/api/compras/${id}/cancelar`,
+  pagarCredito: (id) => `/api/compras/${id}/pagar-credito`,
 })

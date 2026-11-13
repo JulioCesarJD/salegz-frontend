@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
-import { Plus, Search, Eye, DollarSign, Tag } from 'lucide-react';
+import { Plus, Search, Eye, Pencil, DollarSign, Tag, Receipt } from 'lucide-react';
 import { usePermiso } from '../hooks/usePermiso';
 import { fmt } from '../utils/format';
-import { ConceptosModal } from '../components/features/gastos/ConceptosModal';
 import { NuevoGastoModal } from '../components/features/gastos/NuevoGastoModal';
+import { EditarGastoModal } from '../components/features/gastos/EditarGastoModal';
 import { GastoDetalle } from '../components/features/gastos/GastoDetalle';
-import { useGastos, useConsumosGastos } from '../hooks/useGastos';
+import { useGastos } from '../hooks/useGastos';
 
 export function GastosPage() {
   const { puedeVer, puedeAcceder } = usePermiso();
 
-  // Verificar acceso a Gastos
+  const [search, setSearch] = useState('');
+  const [modal, setModal] = useState(null);
+
+  const { data: gastos = [], isLoading } = useGastos({ pageSize: 1000 });
+
+  // Verificar acceso a Gastos (después de los hooks)
   if (!puedeVer('verGastos')) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -26,26 +31,14 @@ export function GastosPage() {
     )
   }
 
-  const [search, setSearch] = useState('');
-  const [modal, setModal] = useState(null);
-
-  const { data: gastos = [], isLoading } = useGastos();
+  const totalDe = (g) => (g.detalles || []).reduce((s, d) => s + (d.subTotal || 0) + (d.itbis || 0), 0);
 
   const list = gastos.filter(g => {
     const q = search.toLowerCase();
-    return !q || g.usuario?.toLowerCase().includes(q) || String(g.gastosId).includes(q);
+    return !q || (g.descripcion || '').toLowerCase().includes(q) || String(g.gastosId).includes(q);
   });
 
-  const totalMes = gastos.reduce((s, g) => s + g.total, 0);
-
-  const { data: consumos = [] } = useConsumosGastos();
-
-  const resolverConceptos = (detalles) => {
-    if (!detalles?.length) return '—';
-    return detalles
-      .map(d => consumos.find(c => c.consumosGastosId === d.consumosGastosId)?.descripcion || '?')
-      .join(', ');
-  };
+  const totalMes = gastos.reduce((s, g) => s + totalDe(g), 0);
 
   return (
     <div className="space-y-5">
@@ -55,9 +48,6 @@ export function GastosPage() {
           <p className="page-sub">{gastos.length} gastos registrados</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setModal('conceptos')} className="btn-secondary">
-            <Tag size={15} /> Conceptos
-          </button>
           {puedeAcceder(['crearGastos']) && (
             <button onClick={() => setModal('nuevo')} className="btn-primary">
               <Plus size={15} /> Nuevo gasto
@@ -89,7 +79,7 @@ export function GastosPage() {
 
       <div className="relative max-w-sm">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-        <input className="input pl-8" placeholder="Buscar usuario o #..."
+        <input className="input pl-8" placeholder="Buscar descripción o #..."
           value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
@@ -98,36 +88,37 @@ export function GastosPage() {
           <thead>
             <tr>
               <th className="w-12">#</th>
-              <th className="w-44">Usuario</th>
+              <th className="w-64">Descripción</th>
               <th className="w-28">Fecha</th>
-              <th className="w-20 text-center">Conceptos</th>
               <th className="w-32 text-right">Total</th>
-              <th className="w-16"></th>
+              <th className="w-32"></th>
             </tr>
           </thead>
           <tbody>
             {isLoading
-              ? <tr><td colSpan={6} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>Cargando...</td></tr>
+              ? <tr><td colSpan={5} className="text-center py-10" style={{ color: 'var(--text-muted)' }}>Cargando...</td></tr>
               : list.length === 0
-                ? <tr><td colSpan={6} className="text-center py-12">
-                  <DollarSign size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
+                ? <tr><td colSpan={5} className="text-center py-12">
+                  <Receipt size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
                   <p style={{ color: 'var(--text-muted)' }}>No hay gastos</p>
                 </td></tr>
                 : list.map(g => (
                   <tr key={g.gastosId}>
                     <td className="font-bold text-sm " style={{ color: 'var(--brand)' }}>#{g.gastosId}</td>
-                    <td className="font-medium text-sm truncate">{g.usuario}</td>
+                    <td className="font-medium text-sm truncate">{g.descripcion || '—'}</td>
                     <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {new Date(g.fecha).toLocaleDateString('es-DO')}
+                      {g.fechaCreacion ? new Date(g.fechaCreacion).toLocaleDateString('es-DO') : '—'}
                     </td>
-                    <td className="text-sm truncate" title={g.detalles?.map(d => d.descripcion).join(', ')}>
-                      {g.detalles?.map(d => d.descripcion).join(', ') || '—'}
-                    </td>
-                    <td className="text-start font-semibold text-sm tabular-nums">{fmt(g.total)}</td>
+                    <td className="text-start font-semibold text-sm tabular-nums">{fmt(totalDe(g))}</td>
                     <td>
-                      <button onClick={() => setModal({ ver: g.gastosId })} className="btn-ghost btn-icon btn-sm">
-                        <Eye size={14} />
-                      </button>
+                      <div className="flex gap-1">
+                        <button onClick={() => setModal({ ver: g.gastosId })} className="btn-ghost btn-icon btn-sm" title="Ver">
+                          <Eye size={14} />
+                        </button>
+                        <button onClick={() => setModal({ editar: g })} className="btn-ghost btn-icon btn-sm" title="Editar">
+                          <Pencil size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -137,8 +128,14 @@ export function GastosPage() {
       </div>
 
       {modal === 'nuevo' && <NuevoGastoModal onClose={() => setModal(null)} />}
-      {modal === 'conceptos' && <ConceptosModal onClose={() => setModal(null)} />}
       {modal?.ver && <GastoDetalle gastoId={modal.ver} onClose={() => setModal(null)} />}
+      {modal?.editar && (
+        <EditarGastoModal
+          gasto={modal.editar}
+          onClose={() => setModal(null)}
+          onSaveSuccess={() => setModal(null)}
+        />
+      )}
     </div>
   );
 }

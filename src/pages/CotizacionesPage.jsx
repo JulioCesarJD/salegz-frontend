@@ -11,7 +11,9 @@ export function CotizacionesPage() {
   const [modal, setModal] = useState(null);
   const { puedeVer: puedeVerCotizaciones, puedeAcceder: puedeCrear } = usePermiso()
 
-  // Si no puede ver cotizaciones, mostrar acceso denegado
+  const { data: cotizaciones = [], isLoading } = useCotizaciones();
+
+  // Si no puede ver cotizaciones, mostrar acceso denegado (después de los hooks)
   if (!puedeVerCotizaciones('verCotizaciones')) {
     return (
       <div className="flex items-center justify-center min-h-screen px-4">
@@ -27,11 +29,9 @@ export function CotizacionesPage() {
     )
   }
 
-  const { data: cotizaciones = [], isLoading } = useCotizaciones();
-
   const list = cotizaciones.filter(c => {
     const q = search.toLowerCase();
-    return !q || (c.nombreCliente || '').toLowerCase().includes(q) || String(c.cotizacionId).includes(q);
+    return !q || (c.asunto || '').toLowerCase().includes(q) || String(c.cotizacionId).includes(q);
   });
 
   const totalCotizado = cotizaciones.reduce((s, c) => s + c.total, 0);
@@ -78,7 +78,7 @@ export function CotizacionesPage() {
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
         <input 
           className="input pl-8 w-full" 
-          placeholder="Buscar cliente o # cotización..."
+          placeholder="Buscar asunto o # cotización..."
           value={search} 
           onChange={e => setSearch(e.target.value)} 
         />
@@ -90,7 +90,7 @@ export function CotizacionesPage() {
           <thead>
             <tr>
               <th className="w-12">#</th>
-              <th className="min-w-[150px] sm:w-48">Cliente</th>
+              <th className="min-w-[150px] sm:w-48">Asunto</th>
               <th className="w-28">Fecha</th>
               <th className="w-32 text-right">ITBIS</th>
               <th className="w-32 text-right">Total</th>
@@ -110,8 +110,15 @@ export function CotizacionesPage() {
             ) : list.map(c => (
               <tr key={c.cotizacionId}>
                 <td className="font-bold text-sm whitespace-nowrap" style={{ color: 'var(--brand)' }}>#{c.cotizacionId}</td>
-                <td className="font-medium text-sm break-words max-w-[200px] sm:max-w-none">
-                  {c.nombreCliente || 'Sin cliente'}
+                <td>
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                      <ClipboardList size={14} className="text-blue-500" />
+                    </div>
+                    <span className="font-medium text-sm break-words max-w-[200px] sm:max-w-none">
+                      {c.asunto || 'Cotización'}
+                    </span>
+                  </div>
                 </td>
                 <td className="text-sm whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>
                   {new Date(c.fecha).toLocaleDateString('es-DO')}

@@ -3,7 +3,6 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../../../store/authStore';
 import { useCreateCompra } from '../../../hooks/useCompras';
 import { fmt } from '../../../utils/format';
 import { NumInput } from '../../common/NumInput';
@@ -11,7 +10,6 @@ import { getClientes } from '../../../services/clientesService';
 import { getProductos } from '../../../services/productosService';
 
 export function NuevaCompraModal({ onClose }) {
-  const { user } = useAuthStore();
   const [proveedorSearch, setProveedorSearch] = useState('');
   const [productoSearch,  setProductoSearch]  = useState('');
   const [proveedorSel,    setProveedorSel]    = useState(null);
@@ -20,7 +18,7 @@ export function NuevaCompraModal({ onClose }) {
   const createMutation = useCreateCompra(() => onClose());
 
   const { register, handleSubmit, watch, control, formState: { isDirty } } = useForm({
-    defaultValues: { tipoPago: 'Efectivo', estado: 0, detalles: [] },
+    defaultValues: { tipo: 0, detalles: [] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'detalles' });
 
@@ -78,16 +76,14 @@ export function NuevaCompraModal({ onClose }) {
 
   const submit = (data) => {
     if (fields.length === 0) { toast.error('Agrega al menos un producto'); return; }
+    // La API calcula totales desde el producto y asigna usuario/empresa del token.
     createMutation.mutate({
       clienteId: proveedorSel?.clienteId || null,
-      usuarioId: user?.usuarioId,
-      total,
-      tipoPago:  data.tipoPago,
-      estado:    parseInt(data.estado),
-      detalles:  data.detalles.map(d => ({
+      tipo: parseInt(data.tipo, 10) || 0,
+      detalles: data.detalles.map(d => ({
         productoId: d.productoId,
-        cantidad:   parseFloat(d.cantidad),
-        subTotal:   parseFloat(d.cantidad) * parseFloat(d.costo),
+        cantidad: parseFloat(d.cantidad),
+        descuento: 0,
       })),
     });
   };
@@ -141,20 +137,10 @@ export function NuevaCompraModal({ onClose }) {
                 )}
               </div>
 
-              {/* ── Tipo de pago ── */}
+              {/* ── Tipo ── */}
               <div>
-                <label className="label">Tipo de pago</label>
-                <select className="input" {...register('tipoPago')}>
-                  {['Efectivo','Tarjeta','Transferencia','Cheque','Crédito'].map(t => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* ── Estado ── */}
-              <div>
-                <label className="label">Estado</label>
-                <select className="input" {...register('estado')}>
+                <label className="label">Tipo</label>
+                <select className="input" {...register('tipo')}>
                   <option value={0}>Contado</option>
                   <option value={1}>Crédito</option>
                 </select>

@@ -1,44 +1,24 @@
 import React, { useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { Search, Tag, Trash2 } from 'lucide-react';
+import { Trash2, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useAuthStore } from '../../../store/authStore';
-import { useSearchConsumos, useConsumosGastos, useCreateGasto } from '../../../hooks/useGastos';
+import { useCreateGasto } from '../../../hooks/useGastos';
 import { fmt } from '../../../utils/format';
 import { NumInput } from '../../common/NumInput';
 
 export function NuevoGastoModal({ onClose }) {
-  const { user } = useAuthStore();
-  const [consumoSearch, setConsumoSearch] = useState('');
   const [confirmCancel, setConfirmCancel] = useState(false);
-  
   const createMutation = useCreateGasto(() => onClose());
 
   const { handleSubmit, watch, control, register, formState: { isDirty } } = useForm({
-    defaultValues: { detalles: [] }
+    defaultValues: { descripcion: '', detalles: [] },
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'detalles' });
 
-  const { data: consumosQuery = [] } = useSearchConsumos(consumoSearch);
-  const { data: todosConsumos = [] } = useConsumosGastos();
+  const detalles = watch('detalles') || [];
+  const total = detalles.reduce((s, d) => s + parseFloat(d.subTotal || 0) + parseFloat(d.itbis || 0), 0);
 
-  const resultadosFiltrados = consumosQuery.length > 0
-    ? consumosQuery
-    : consumoSearch.length >= 1
-      ? todosConsumos.filter(c => c.descripcion.toLowerCase().includes(consumoSearch.toLowerCase()))
-      : [];
-
-  const detalles = watch('detalles');
-  const total = detalles.reduce((s, d) => s + parseFloat(d.monto || 0), 0);
-
-  const agregarConsumo = (c) => {
-    if (fields.some(f => f.consumosGastosId === c.consumosGastosId)) {
-      toast.error('Ya agregaste ese concepto');
-      return;
-    }
-    append({ consumosGastosId: c.consumosGastosId, descripcion: c.descripcion, monto: '' });
-    setConsumoSearch('');
-  };
+  const agregarDetalle = () => append({ subTotal: '', itbis: '', comprobante: '' });
 
   const closeWithConfirm = () => {
     if (isDirty || detalles?.length > 0) setConfirmCancel(true);
@@ -46,12 +26,14 @@ export function NuevoGastoModal({ onClose }) {
   };
 
   const submit = (data) => {
-    if (fields.length === 0) { toast.error('Agrega al menos un concepto'); return; }
+    if (fields.length === 0) { toast.error('Agrega al menos un detalle'); return; }
+    if (!data.descripcion?.trim()) { toast.error('La descripción es obligatoria'); return; }
     createMutation.mutate({
-      usuarioId: user?.usuarioId,
+      descripcion: data.descripcion.trim(),
       detalles: data.detalles.map(d => ({
-        consumosGastosId: d.consumosGastosId,
-        monto: parseFloat(d.monto || 0),
+        subTotal: parseFloat(d.subTotal || 0),
+        itbis: parseFloat(d.itbis || 0),
+        comprobante: d.comprobante?.trim() || null,
       })),
     });
   };
@@ -59,7 +41,7 @@ export function NuevoGastoModal({ onClose }) {
   return (
     <>
       <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeWithConfirm()}>
-        <div className="modal-box max-w-2xl">
+        <div className="modal-box max-w-2xl max-h-[90vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>Nuevo gasto</h2>
             <button onClick={closeWithConfirm} className="btn-ghost btn-icon text-lg leading-none rounded-lg">×</button>
@@ -67,60 +49,51 @@ export function NuevoGastoModal({ onClose }) {
 
           <form onSubmit={handleSubmit(submit)} className="space-y-5">
             <div>
-              <label className="label">Agregar concepto</label>
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-                <input className="input pl-8" placeholder="Buscar concepto de gasto..."
-                       value={consumoSearch} onChange={e => setConsumoSearch(e.target.value)} />
-                       
-                {resultadosFiltrados.length > 0 && (
-                  <div className="absolute z-20 w-full mt-1 rounded-lg border shadow-lg overflow-hidden"
-                       style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-                    {resultadosFiltrados.map(c => (
-                      <button key={c.consumosGastosId} type="button"
-                              className="w-full text-left px-3 py-2.5 text-sm hover:bg-[var(--bg-tertiary)] flex items-center gap-2"
-                              onClick={() => agregarConsumo(c)}>
-                        <Tag size={12} style={{ color: 'var(--text-muted)' }} />
-                        {c.descripcion}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {consumoSearch.length >= 1 && resultadosFiltrados.length === 0 && (
-                  <div className="absolute z-20 w-full mt-1 rounded-lg border shadow-lg overflow-hidden"
-                       style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border)' }}>
-                    <p className="px-3 py-2.5 text-sm" style={{ color: 'var(--text-muted)' }}>
-                      No encontrado. Ve a "Conceptos" para crear uno nuevo.
-                    </p>
-                  </div>
-                )}
-              </div>
+              <label className="label">Descripción *</label>
+              <input className="input" placeholder="Ej: Compra de materiales, pago de servicios..."
+                {...register('descripcion', { required: true })} />
             </div>
 
-            {fields.length > 0 ? (
-              <div className="space-y-2">
-                {fields.map((f, i) => (
-                  <div key={f.id} className="flex items-center gap-3 p-3 rounded-lg border"
-                       style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-tertiary)' }}>
-                    <Tag size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                    <span className="flex-1 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{f.descripcion}</span>
-                    <NumInput className="input w-36 text-right py-1.5 text-sm font-bold"
-                              placeholder="0.00"
-                              {...register(`detalles.${i}.monto`)} />
-                    <button type="button" onClick={() => remove(i)}
-                            className="btn-ghost btn-icon btn-sm text-red-400 hover:text-red-600 flex-shrink-0">
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-10 rounded-xl border-2 border-dashed gap-2"
-                   style={{ borderColor: 'var(--border)' }}>
-                <Tag size={20} style={{ color: 'var(--text-muted)' }} />
-                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Busca y agrega conceptos de gasto</p>
-              </div>
-            )}
+            <div>
+              <label className="label">Detalles</label>
+              {fields.length > 0 ? (
+                <div className="space-y-2">
+                  {fields.map((f, i) => (
+                    <div key={f.id} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end p-3 rounded-lg border"
+                      style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-tertiary)' }}>
+                      <div>
+                        <label className="label">Subtotal</label>
+                        <NumInput className="input text-right py-1.5 text-sm font-bold" placeholder="0.00"
+                          {...register(`detalles.${i}.subTotal`)} />
+                      </div>
+                      <div>
+                        <label className="label">ITBIS</label>
+                        <NumInput className="input text-right py-1.5 text-sm font-bold" placeholder="0.00"
+                          {...register(`detalles.${i}.itbis`)} />
+                      </div>
+                      <div>
+                        <label className="label">Comprobante</label>
+                        <input className="input py-1.5 text-sm" placeholder="NCF..."
+                          {...register(`detalles.${i}.comprobante`)} />
+                      </div>
+                      <button type="button" onClick={() => remove(i)}
+                        className="btn-ghost btn-icon btn-sm text-red-400 hover:text-red-600 flex-shrink-0 mb-1">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 rounded-xl border-2 border-dashed gap-2"
+                  style={{ borderColor: 'var(--border)' }}>
+                  <Tag size={20} style={{ color: 'var(--text-muted)' }} />
+                  <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Agregue detalles del gasto</p>
+                </div>
+              )}
+              <button type="button" onClick={agregarDetalle} className="btn-secondary w-full mt-3">
+                + Agregar detalle
+              </button>
+            </div>
 
             {fields.length > 0 && (
               <div className="flex justify-end">

@@ -1,16 +1,40 @@
 import api from '../lib/api'
-import { unwrapPaged } from './_helpers'
+import { cleanParams, unwrapPaged } from './_helpers'
 
 const BASE = '/api/postres'
 
-/** GET /api/postres — hoy devuelve una lista vacía. */
-export const getPostres = async () => {
-  const { data } = await api.get(BASE)
+// Nota: Postre no tiene EmpresaId en la API. El alcance por empresa se
+// resuelve en el servidor vía Conduce -> Escuela; el frontend solo consume
+// el listado resultante.
+
+/** GET /api/postres?search=&page=&pageSize= */
+export const getPostres = async (params = {}) => {
+  const { data } = await api.get(BASE, { params: cleanParams(params) })
   return unwrapPaged(data)
 }
 
-/** POST /api/postres — hoy responde `{ message: "ok" }`. */
+export const getPostresPaged = async (params = {}) => {
+  const { data } = await api.get(BASE, { params: cleanParams(params) })
+  return data
+}
+
+export const getPostreById = async (postreId) => {
+  const { data } = await api.get(`${BASE}/${postreId}`)
+  return data
+}
+
+/** POST /api/postres */
 export const createPostre = async (data) => {
-  const { data: result } = await api.post(BASE, data)
+  const { data: result } = await api.post(BASE, { nombre: data.nombre ?? '' })
   return result
+}
+
+/** PUT /api/postres/{id} */
+export const updatePostre = async (postreId, data) => {
+  const { data: result } = await api.put(`${BASE}/${postreId}`, { nombre: data.nombre ?? '' })
+  return result
+}
+
+export const deletePostre = async (postreId) => {
+  await api.delete(`${BASE}/${postreId}`)
 }

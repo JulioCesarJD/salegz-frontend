@@ -31,18 +31,18 @@ export const useCreateCompra = (onSuccessCallback) => {
   });
 };
 
-/**
- * @deprecated La API no expone pago de compras; se conserva el export
- * para no romper el modal existente hasta la Fase 4.
- */
+/** POST /api/compras/{id}/pagar-credito — abono que puede saldar la deuda. */
 export const useSaldarCompra = (onSuccessCallback) => {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: comprasService.saldarCompra,
+    mutationFn: ({ compraId, data }) => comprasService.saldarCompra(compraId, data),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['compras'] });
+      qc.invalidateQueries({ queryKey: ['compra'] });
       toast.success('Pago registrado');
       if (onSuccessCallback) onSuccessCallback();
     },
-    onError: (e) => toast.error(e.response?.data?.message || e.message || 'Error al procesar pago'),
+    onError: (e) => toast.error(e.response?.data?.message || 'Error al procesar pago'),
   });
 };
 

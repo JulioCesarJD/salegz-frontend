@@ -7,9 +7,10 @@ import { CompraDetalle } from '../components/features/compras/CompraDetalle';
 import { SaldarModal } from '../components/features/compras/SaldarModal';
 import { NuevaCompraModal } from '../components/features/compras/NuevaCompraModal';
 
+const TIPO_COMPRA = { 0: 'Contado', 1: 'Crédito' };
+// Estado API: 1 = Activo, 2 = Saldado, 3 = Cancelado.
 const ESTADOS_COMPRA = {
-  0: <span className="badge badge-gray">Contado</span>,
-  1: <span className="badge badge-yellow">Crédito</span>,
+  1: <span className="badge badge-yellow">Activo</span>,
   2: <span className="badge badge-green">Saldado</span>,
   3: <span className="badge badge-red">Cancelado</span>,
 };
@@ -17,7 +18,14 @@ const ESTADOS_COMPRA = {
 export function ComprasPage() {
   const { puedeVer, puedeAcceder } = usePermiso();
 
-  // Verificar acceso a Compras
+  const [search, setSearch] = useState('');
+  const [estado, setEstado] = useState('');
+  const [modal,  setModal]  = useState(null);
+
+  const { data: compras = [], isLoading } = useCompras(estado);
+  const cancelarMutation = useCancelarCompra();
+
+  // Verificar acceso a Compras (después de los hooks para no romper reglas).
   if (!puedeVer('verCompras')) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -33,20 +41,13 @@ export function ComprasPage() {
     )
   }
 
-  const [search, setSearch] = useState('');
-  const [estado, setEstado] = useState('');
-  const [modal,  setModal]  = useState(null);
-
-  const { data: compras = [], isLoading } = useCompras(estado);
-  const cancelarMutation = useCancelarCompra();
-
-  const list = compras.filter(c => { 
-    const q = search.toLowerCase(); 
-    return !q || (c.nombreCliente||'').toLowerCase().includes(q) || String(c.compraId).includes(q); 
+  const list = compras.filter(c => {
+    const q = search.toLowerCase();
+    return !q || String(c.compraId).includes(q);
   });
-  
+
   const totalCompras = compras.reduce((s, c) => c.estado !== 3 ? s + c.total : s, 0);
-  const porPagar     = compras.filter(c => c.estado === 1).length;
+  const porPagar     = compras.filter(c => c.tipo === 1 && c.estado === 1).length;
 
   return (
     <div className="space-y-5">
@@ -64,10 +65,10 @@ export function ComprasPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          ['Total',      compras.length,                          'var(--text-primary)'],
-          ['Contado',    compras.filter(c=>c.estado===0).length,  'var(--text-secondary)'],
-          ['Crédito',    compras.filter(c=>c.estado===1).length,  '#f59e0b'],
-          ['Canceladas', compras.filter(c=>c.estado===3).length,  'var(--text-muted)'],
+          ['Total',      compras.length,                                  'var(--text-primary)'],
+          ['Contado',    compras.filter(c=>c.tipo===0).length,            'var(--text-secondary)'],
+          ['Crédito',    compras.filter(c=>c.tipo===1).length,            '#f59e0b'],
+          ['Canceladas', compras.filter(c=>c.estado===3).length,          'var(--text-muted)'],
         ].map(([l, v, color]) => (
           <div key={l} className="card text-center py-3">
             <p className="text-xl font-extrabold" style={{ color }}>{v}</p>
@@ -100,13 +101,12 @@ export function ComprasPage() {
       <div className="flex flex-wrap gap-3">
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-          <input className="input pl-8 w-60" placeholder="Buscar proveedor o # compra..."
+          <input className="input pl-8 w-60" placeholder="Buscar # compra..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <select className="input w-40" value={estado} onChange={e => setEstado(e.target.value)}>
           <option value="">Todos</option>
-          <option value="0">Contado</option>
-          <option value="1">Crédito</option>
+          <option value="1">Activo</option>
           <option value="2">Saldado</option>
           <option value="3">Cancelado</option>
         </select>
@@ -117,7 +117,7 @@ export function ComprasPage() {
           <thead>
             <tr>
               <th className="w-12">#</th>
-              <th className="w-44">Proveedor</th>
+              <th className="w-28">Proveedor</th>
               <th className="w-24">Fecha</th>
               <th className="w-28">Tipo pago</th>
               <th className="w-32 text-right">Total</th>
@@ -138,20 +138,20 @@ export function ComprasPage() {
             ) : list.map(c => (
               <tr key={c.compraId}>
                 <td className="font-bold text-sm" style={{ color: 'var(--brand)' }}>#{c.compraId}</td>
-                <td className="font-medium text-sm truncate">{c.nombreCliente || 'Sin proveedor'}</td>
+                <td className="font-medium text-sm truncate">{c.clienteId != null ? `Cliente #${c.clienteId}` : 'Sin proveedor'}</td>
                 <td className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {new Date(c.fecha).toLocaleDateString('es-DO')}
+                  {c.fecha ? new Date(c.fecha).toLocaleDateString('es-DO') : '—'}
                 </td>
-                <td><span className="badge badge-gray">{c.tipoPago}</span></td>
+                <td><span className="badge badge-gray">{TIPO_COMPRA[c.tipo] ?? '—'}</span></td>
                 <td className="text-start font-semibold text-sm tabular-nums">{fmt(c.total)}</td>
-                <td>{ESTADOS_COMPRA[c.estado]}</td>
+                <td>{ESTADOS_COMPRA[c.estado] || <span className="badge badge-gray">{c.estado ?? '—'}</span>}</td>
                 <td>
                   <div className="flex gap-1">
                     <button onClick={() => setModal({ ver: c.compraId })}
                       className="btn-ghost btn-icon btn-sm" title="Ver">
                       <Eye size={14} />
                     </button>
-                    {c.estado === 1 && (
+                    {c.tipo === 1 && c.estado === 1 && (
                       <button onClick={() => setModal({ saldar: true, compra: c })}
                         className="btn-ghost btn-icon btn-sm text-green-500" title="Registrar pago">
                         <DollarSign size={14} />
