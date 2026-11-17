@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -18,10 +18,11 @@ import {
   UserCircle,
   Menu,
   X,
-  HandCoins,
   Utensils,
   CakeSlice,
   MapPin,
+  ChefHat,
+  CalendarDays,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuthStore } from "../../store/authStore";
@@ -44,19 +45,6 @@ const NAV_ITEMS = [
     icon: FileText,
     permission: "Facturas.Ver",
   },
-  {
-    to: "/cuentaporcobrar",
-    label: "Cuenta/Cobrar",
-    icon: HandCoins,
-    permission: "Facturas.Ver",
-  },
-  {
-    to: "/cuentas-pagar",
-    label: "Cuenta/Pagar",
-    icon: DollarSign,
-    permission: "Compras.Ver",
-  },
-  // { to: "/ordenes", label: "Órdenes", icon: ShoppingCart, permission: null },
   {
     to: "/notas-credito",
     label: "Notas Crédito",
@@ -120,6 +108,18 @@ const NAV_ITEMS = [
     permission: "MenuComida.Ver",
   },
   {
+    to: "/recetas",
+    label: "Recetas",
+    icon: ChefHat,
+    permission: "Recetas.Ver",
+  },
+  {
+    to: "/menu-semanal",
+    label: "Menú Semanal",
+    icon: CalendarDays,
+    permission: "MenuSemanal.Ver",
+  },
+  {
     to: "/postres",
     label: "Postres",
     icon: CakeSlice,
@@ -141,21 +141,6 @@ const NAV_ITEMS = [
   },
   { divider: true },
   {
-    to: "/ncf",
-    label: "NCF",
-    icon: FileText,
-    permission: null,
-    adminOnly: true,
-  },
-  {
-    to: "/fiscal",
-    label: "Fiscal",
-    icon: TrendingUp,
-    permission: null,
-    adminOnly: true,
-  },
-  { divider: true },
-  {
     to: "/configuracion",
     label: "Configuración",
     icon: Settings,
@@ -171,19 +156,18 @@ const NAV_ITEMS = [
 
 // Hook para detectar si es móvil
 const useMediaQuery = (query) => {
-  const [matches, setMatches] = useState(
-    () => typeof window !== "undefined" && window.matchMedia(query).matches,
+  const subscribe = useCallback(
+    (callback) => {
+      const media = window.matchMedia(query);
+      media.addEventListener("change", callback);
+      return () => media.removeEventListener("change", callback);
+    },
+    [query],
   );
 
-  useEffect(() => {
-    const media = window.matchMedia(query);
-    const listener = (e) => setMatches(e.matches);
-    setMatches(media.matches);
-    media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
-  }, [query]);
+  const getSnapshot = () => window.matchMedia(query).matches;
 
-  return matches;
+  return useSyncExternalStore(subscribe, getSnapshot, () => false);
 };
 
 export function Sidebar({ collapsed, onToggle }) {

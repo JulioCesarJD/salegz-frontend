@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as postresService from '../services/postresService';
+import { getErrorMessage } from '../lib/apiErrors';
 
 export const usePostres = (params, options = {}) => {
   return useQuery({
@@ -27,7 +28,7 @@ export const useCreatePostre = (onSuccess) => {
       toast.success('Postre registrado');
       onSuccess?.();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al registrar postre'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al registrar postre')),
   });
 };
 
@@ -37,10 +38,11 @@ export const useUpdatePostre = (onSuccess) => {
     mutationFn: ({ postreId, data }) => postresService.updatePostre(postreId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['postres'] });
+      qc.invalidateQueries({ queryKey: ['postre'] });
       toast.success('Postre actualizado');
       onSuccess?.();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al actualizar postre'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al actualizar postre')),
   });
 };
 
@@ -53,6 +55,6 @@ export const useDeletePostre = (onSuccess) => {
       toast.success('Postre eliminado');
       onSuccess?.();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al eliminar postre'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al eliminar postre')),
   });
 };

@@ -1,13 +1,10 @@
 import api from '../lib/api'
 import { cleanParams, unwrapPaged } from './_helpers'
+import { POSTRE_ENDPOINTS } from '../models/postres'
 
-const BASE = '/api/postres'
+const BASE = POSTRE_ENDPOINTS.base
 
-// Nota: Postre no tiene EmpresaId en la API. El alcance por empresa se
-// resuelve en el servidor vía Conduce -> Escuela; el frontend solo consume
-// el listado resultante.
-
-/** GET /api/postres?search=&page=&pageSize= */
+/** GET /api/postres?search=&estado=&page=&pageSize= */
 export const getPostres = async (params = {}) => {
   const { data } = await api.get(BASE, { params: cleanParams(params) })
   return unwrapPaged(data)
@@ -23,15 +20,21 @@ export const getPostreById = async (postreId) => {
   return data
 }
 
+const toPayload = (data) => ({
+  nombre: data.nombre ?? '',
+  costo: Number(data.costo) || 0,
+  estado: data.estado ?? true,
+})
+
 /** POST /api/postres */
 export const createPostre = async (data) => {
-  const { data: result } = await api.post(BASE, { nombre: data.nombre ?? '' })
+  const { data: result } = await api.post(BASE, toPayload(data))
   return result
 }
 
 /** PUT /api/postres/{id} */
 export const updatePostre = async (postreId, data) => {
-  const { data: result } = await api.put(`${BASE}/${postreId}`, { nombre: data.nombre ?? '' })
+  const { data: result } = await api.put(`${BASE}/${postreId}`, toPayload(data))
   return result
 }
 

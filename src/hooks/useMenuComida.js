@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as menuComidaService from '../services/menuComidaService';
+import { getErrorMessage } from '../lib/apiErrors';
 
 export const useMenuComida = (params, options = {}) => {
   return useQuery({
@@ -27,7 +28,7 @@ export const useCreateMenuComida = (onSuccess) => {
       toast.success('Menú registrado');
       onSuccess?.();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al registrar menú'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al registrar menú')),
   });
 };
 
@@ -37,10 +38,12 @@ export const useUpdateMenuComida = (onSuccess) => {
     mutationFn: ({ menuComidaId, data }) => menuComidaService.updateMenuComida(menuComidaId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['menu-comida'] });
+      qc.invalidateQueries({ queryKey: ['menu-comida-item'] });
+      qc.invalidateQueries({ queryKey: ['menu-comida-detalles'] });
       toast.success('Menú actualizado');
       onSuccess?.();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al actualizar menú'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al actualizar menú')),
   });
 };
 
@@ -50,9 +53,10 @@ export const useDeleteMenuComida = (onSuccess) => {
     mutationFn: menuComidaService.deleteMenuComida,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['menu-comida'] });
+      qc.invalidateQueries({ queryKey: ['menu-comida-detalles'] });
       toast.success('Menú eliminado');
       onSuccess?.();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al eliminar menú'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al eliminar menú')),
   });
 };

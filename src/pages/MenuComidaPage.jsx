@@ -1,23 +1,38 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { Plus, Search, Edit2, Shield, Trash2, UtensilsCrossed } from 'lucide-react';
 import { usePermiso } from '../hooks/usePermiso';
+import { P } from '../store/permisosStore';
 import { useMenuComida, useCreateMenuComida, useUpdateMenuComida, useDeleteMenuComida } from '../hooks/useMenuComida';
+import { useProductos } from '../hooks/useProductos';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
+import { MenuComidaModal } from '../components/features/cocina/MenuComidaModal';
 import { fmt } from '../utils/format';
 
 export function MenuComidaPage() {
-  const { puedeVer } = usePermiso();
+  const { puedeVer, tienePermiso } = usePermiso();
+  const puedeAcceder = puedeVer(P.MenuComida.Ver);
+  const puedeCrear = tienePermiso(P.MenuComida.Crear);
+  const puedeEditar = tienePermiso(P.MenuComida.Editar);
+  const puedeEliminar = tienePermiso(P.MenuComida.Eliminar);
+  const puedeVerProductos = puedeVer(P.Productos.Ver);
+
   const [search, setSearch] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
   const [modal, setModal] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const { data: menu = [], isLoading } = useMenuComida({ pageSize: 1000 });
+  const { data: menu = [], isLoading } = useMenuComida({ pageSize: 200 }, { enabled: puedeAcceder });
+  // Los ingredientes (detalles) se capturan contra el catálogo de productos.
+  const { data: productos = [] } = useProductos(
+    { pageSize: 200 },
+    { enabled: puedeAcceder && puedeVerProductos }
+  );
+
   const create = useCreateMenuComida(() => setModal(null));
   const update = useUpdateMenuComida(() => setModal(null));
   const remove = useDeleteMenuComida();
 
-  if (!puedeVer('verMenuComida')) {
+  if (!puedeAcceder) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -30,7 +45,11 @@ export function MenuComidaPage() {
 
   const list = menu.filter((m) => {
     const q = search.toLowerCase();
-    return !q || (m.nombre || '').toLowerCase().includes(q);
+    const matchQ = !q ||
+      (m.nombre || '').toLowerCase().includes(q) ||
+      (m.detalles || []).some((d) => (d.productoDescripcion || '').toLowerCase().includes(q));
+    const matchEstado = filtroEstado === '' || String(Boolean(m.estado)) === filtroEstado;
+    return matchQ && matchEstado;
   });
 
   return (
@@ -38,17 +57,36 @@ export function MenuComidaPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Menú Comida</h1>
-          <p className="page-sub">{menu.length} platos</p>
+          <p className="page-sub">
+            {menu.length} platos · {menu.filter((m) => m.estado).length} activos
+          </p>
         </div>
-        <button onClick={() => setModal({})} className="btn-primary">
-          <Plus size={15} /> Nuevo plato
-        </button>
+        {puedeCrear && (
+          <button onClick={() => setModal({})} className="btn-primary">
+            <Plus size={15} /> Nuevo plato
+          </button>
+        )}
       </div>
 
-      <div className="relative max-w-sm">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-        <input className="input pl-8" placeholder="Buscar plato..."
-          value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex flex-wrap gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[240px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+          <input
+            className="input pl-8"
+            placeholder="Buscar plato o ingrediente..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <select
+          className="input w-40"
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+        >
+          <option value="">Todos</option>
+          <option value="true">Activos</option>
+          <option value="false">Inactivos</option>
+        </select>
       </div>
 
       <div className="tbl-wrap">
@@ -56,18 +94,20 @@ export function MenuComidaPage() {
           <thead>
             <tr>
               <th>Plato</th>
-              <th className="text-right w-32">Precio</th>
-              <th className="text-right w-32">Costo</th>
-              <th className="text-right w-32">Margen</th>
-              <th className="w-40"></th>
+              <th className="text-right">Precio</th>
+              <th className="text-right">Costo</th>
+              <th className="text-right">Margen</th>
+              <th className="text-right">Ingredientes</th>
+              <th>Estado</th>
+              <th className="w-24"></th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={5} className="text-center py-10">Cargando...</td></tr>
+              <tr><td colSpan={7} className="text-center py-10">Cargando...</td></tr>
             ) : list.length === 0 ? (
               <tr>
-                <td colSpan={5} className="text-center py-12">
+                <td colSpan={7} className="text-center py-12">
                   <Shield size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
                   <p style={{ color: 'var(--text-muted)' }}>No hay platos en el menú</p>
                 </td>
@@ -79,16 +119,33 @@ export function MenuComidaPage() {
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: 'var(--bg-tertiary)' }}>
                       <UtensilsCrossed size={14} style={{ color: 'var(--brand)' }} />
                     </div>
-                    <span className="font-semibold text-sm">{m.nombre}</span>
+                    <div>
+                      <p className="font-semibold text-sm">{m.nombre}</p>
+                      {(m.detalles?.length ?? 0) > 0 && (
+                        <p className="text-xs truncate max-w-[260px]" style={{ color: 'var(--text-muted)' }}>
+                          {m.detalles.map((d) => d.productoDescripcion).filter(Boolean).join(', ')}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </td>
                 <td className="text-right text-sm tabular-nums">{fmt(m.precio)}</td>
                 <td className="text-right text-sm tabular-nums">{fmt(m.costo)}</td>
                 <td className="text-right text-sm tabular-nums">{fmt((m.precio || 0) - (m.costo || 0))}</td>
+                <td className="text-right text-sm tabular-nums">{m.detalles?.length ?? 0}</td>
+                <td>
+                  <span className={m.estado ? 'badge badge-green' : 'badge badge-gray'}>
+                    {m.estado ? 'Activo' : 'Inactivo'}
+                  </span>
+                </td>
                 <td>
                   <div className="flex gap-1">
-                    <button onClick={() => setModal(m)} className="btn-ghost btn-icon btn-sm" title="Editar"><Edit2 size={14} /></button>
-                    <button onClick={() => setDeleteTarget(m)} className="btn-ghost btn-icon btn-sm text-red-500" title="Eliminar"><Trash2 size={14} /></button>
+                    {puedeEditar && (
+                      <button onClick={() => setModal(m)} className="btn-ghost btn-icon btn-sm" title="Editar"><Edit2 size={14} /></button>
+                    )}
+                    {puedeEliminar && (
+                      <button onClick={() => setDeleteTarget(m)} className="btn-ghost btn-icon btn-sm text-red-500" title="Eliminar"><Trash2 size={14} /></button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -108,51 +165,17 @@ export function MenuComidaPage() {
       />
 
       {modal !== null && (
-        <MenuModal
+        <MenuComidaModal
           menu={modal?.menuComidaId ? modal : null}
+          productos={productos}
+          puedeEditarDetalles={puedeVerProductos}
           onClose={() => setModal(null)}
           busy={create.isPending || update.isPending}
           onSave={(d) => (modal?.menuComidaId
-            ? update.mutate({ menuComidaId: modal.menuComidaId, data: { nombre: d.nombre, precio: Number(d.precio) || 0, costo: Number(d.costo) || 0 } })
-            : create.mutate({ nombre: d.nombre, precio: Number(d.precio) || 0, costo: Number(d.costo) || 0 }))}
+            ? update.mutate({ menuComidaId: modal.menuComidaId, data: d })
+            : create.mutate(d))}
         />
       )}
-    </div>
-  );
-}
-
-function MenuModal({ menu, onClose, busy, onSave }) {
-  const { register, handleSubmit } = useForm({ defaultValues: menu || {} });
-  return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-box max-w-sm">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-            {menu?.menuComidaId ? 'Editar plato' : 'Nuevo plato'}
-          </h2>
-          <button onClick={onClose} className="btn-ghost btn-icon">×</button>
-        </div>
-        <form onSubmit={handleSubmit(onSave)} className="space-y-4">
-          <div>
-            <label className="label">Nombre *</label>
-            <input className="input" placeholder="Nombre del plato" {...register('nombre', { required: true, maxLength: 200 })} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Precio *</label>
-              <input type="number" min="0" step="0.01" className="input text-right" placeholder="0.00" {...register('precio', { required: true, min: 0 })} />
-            </div>
-            <div>
-              <label className="label">Costo *</label>
-              <input type="number" min="0" step="0.01" className="input text-right" placeholder="0.00" {...register('costo', { required: true, min: 0 })} />
-            </div>
-          </div>
-          <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
-            <button type="submit" disabled={busy} className="btn-primary flex-1">{busy ? 'Guardando...' : 'Guardar'}</button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 }

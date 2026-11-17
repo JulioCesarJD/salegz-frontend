@@ -34,6 +34,8 @@ import { NcfPage } from './pages/NcfPage'
 import { FiscalPage } from './pages/FiscalPage'
 import { EscuelasPage } from './pages/EscuelasPage'
 import { MenuComidaPage } from './pages/MenuComidaPage'
+import { RecetasPage } from './pages/RecetasPage'
+import { MenuSemanalPage } from './pages/MenuSemanalPage'
 import { PostresPage } from './pages/PostresPage'
 import { ConducesPage } from './pages/ConducesPage'
 
@@ -95,6 +97,8 @@ export default function App() {
             <Route path="notas-credito"          element={<PermissionRoute permission="NotasCredito.Ver"><NotasCreditoPage /></PermissionRoute>} />
             <Route path="escuelas"               element={<PermissionRoute permission="Escuelas.Ver"><EscuelasPage /></PermissionRoute>} />
             <Route path="menu-comida"            element={<PermissionRoute permission="MenuComida.Ver"><MenuComidaPage /></PermissionRoute>} />
+            <Route path="recetas"                element={<PermissionRoute permission="Recetas.Ver"><RecetasPage /></PermissionRoute>} />
+            <Route path="menu-semanal"           element={<PermissionRoute permission="MenuSemanal.Ver"><MenuSemanalPage /></PermissionRoute>} />
             <Route path="postres"                element={<PermissionRoute permission="Postres.Ver"><PostresPage /></PermissionRoute>} />
             <Route path="conduces"               element={<PermissionRoute permission="Conduces.Ver"><ConducesPage /></PermissionRoute>} />
             <Route path="ncf"                    element={<AdminRoute><NcfPage /></AdminRoute>} />

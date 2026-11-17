@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as conducesService from '../services/conducesService';
+import { getErrorMessage } from '../lib/apiErrors';
 
 export const useConduces = (params, options = {}) => {
   return useQuery({
@@ -27,7 +28,7 @@ export const useCreateConduce = (onSuccess) => {
       toast.success('Conduce creado');
       onSuccess?.();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al crear conduce'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al crear conduce')),
   });
 };
 
@@ -38,10 +39,11 @@ export const useUpdateConduce = (onSuccess) => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['conduces'] });
       qc.invalidateQueries({ queryKey: ['conduce'] });
+      qc.invalidateQueries({ queryKey: ['conduce-detalles'] });
       toast.success('Conduce actualizado');
       onSuccess?.();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al actualizar conduce'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al actualizar conduce')),
   });
 };
 
@@ -51,10 +53,11 @@ export const useDeleteConduce = (onSuccess) => {
     mutationFn: conducesService.deleteConduce,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['conduces'] });
+      qc.invalidateQueries({ queryKey: ['conduce-detalles'] });
       toast.success('Conduce eliminado');
       onSuccess?.();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al eliminar conduce'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al eliminar conduce')),
   });
 };
 
@@ -64,9 +67,9 @@ export const useGenerarJornada = (onSuccess) => {
     mutationFn: conducesService.generarJornada,
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['conduces'] });
-      toast.success('Jornada generada');
+      toast.success(`Jornada generada: ${data?.length ?? 0} conduces`);
       onSuccess?.(data);
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al generar jornada'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al generar jornada')),
   });
 };
