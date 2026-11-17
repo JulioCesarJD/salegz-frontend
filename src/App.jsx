@@ -87,11 +87,11 @@ export default function App() {
             <Route path="cuadres"       element={<PermissionRoute permission="Cuadres.Ver"><CuadresPage /></PermissionRoute>} />
             <Route path="reportes"      element={<PermissionRoute permission="Reportes.Ver"><ReportesPage /></PermissionRoute>} />
             <Route path="usuarios"      element={<PermissionRoute permission="Usuarios.Ver"><UsuariosPage /></PermissionRoute>} />
-            <Route path="configuracion" element={<AdminRoute><ConfiguracionPage /></AdminRoute>} />
+            <Route path="configuracion" element={<AdminRoute><ConfiguracionPage /></AdminRoute>}  />
             <Route path="perfil"        element={<PerfilPage />} />
             <Route path="cuentaporcobrar"        element={<PermissionRoute permission="Facturas.Ver"><CuentaPorCobrarPage /></PermissionRoute>} />
             <Route path="cuentas-pagar"          element={<PermissionRoute permission="Compras.Ver"><CuentasPagarPage /></PermissionRoute>} />
-            <Route path="ordenes"                element={<OrdenesPage />} />
+            <Route path="ordenes"                element={<PermissionRoute permission="Ordenes.Ver"><OrdenesPage /></PermissionRoute>} />
             <Route path="notas-credito"          element={<PermissionRoute permission="NotasCredito.Ver"><NotasCreditoPage /></PermissionRoute>} />
             <Route path="escuelas"               element={<PermissionRoute permission="Escuelas.Ver"><EscuelasPage /></PermissionRoute>} />
             <Route path="menu-comida"            element={<PermissionRoute permission="MenuComida.Ver"><MenuComidaPage /></PermissionRoute>} />

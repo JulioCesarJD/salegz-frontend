@@ -56,7 +56,7 @@ const NAV_ITEMS = [
     icon: DollarSign,
     permission: "Compras.Ver",
   },
-  { to: "/ordenes", label: "Órdenes", icon: ShoppingCart, permission: null },
+  // { to: "/ordenes", label: "Órdenes", icon: ShoppingCart, permission: null },
   {
     to: "/notas-credito",
     label: "Notas Crédito",
@@ -74,6 +74,12 @@ const NAV_ITEMS = [
     label: "Clientes",
     icon: Users,
     permission: "Clientes.Ver",
+  },
+  {
+    to: "/conduces",
+    label: "Conduces",
+    icon: MapPin,
+    permission: "Conduces.Ver",
   },
   { divider: true },
   {
@@ -119,12 +125,7 @@ const NAV_ITEMS = [
     icon: CakeSlice,
     permission: "Postres.Ver",
   },
-  {
-    to: "/conduces",
-    label: "Conduces",
-    icon: MapPin,
-    permission: "Conduces.Ver",
-  },
+
   { divider: true },
   {
     to: "/compras",
