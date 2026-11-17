@@ -1,22 +1,33 @@
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { Plus, Search, Edit2, Shield, Trash2, CakeSlice } from 'lucide-react';
 import { usePermiso } from '../hooks/usePermiso';
+import { P } from '../store/permisosStore';
 import { usePostres, useCreatePostre, useUpdatePostre, useDeletePostre } from '../hooks/usePostres';
 import { ConfirmDialog } from '../components/common/ConfirmDialog';
+import { PostreModal } from '../components/features/cocina/PostreModal';
+import { fmt } from '../utils/format';
+
+const fmtFecha = (value) =>
+  value ? new Date(value).toLocaleDateString('es-DO') : '—';
 
 export function PostresPage() {
-  const { puedeVer } = usePermiso();
+  const { puedeVer, tienePermiso } = usePermiso();
+  const puedeAcceder = puedeVer(P.Postres.Ver);
+  const puedeCrear = tienePermiso(P.Postres.Crear);
+  const puedeEditar = tienePermiso(P.Postres.Editar);
+  const puedeEliminar = tienePermiso(P.Postres.Eliminar);
+
   const [search, setSearch] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
   const [modal, setModal] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const { data: postres = [], isLoading } = usePostres({ pageSize: 1000 });
+  const { data: postres = [], isLoading } = usePostres({ pageSize: 200 }, { enabled: puedeAcceder });
   const create = useCreatePostre(() => setModal(null));
   const update = useUpdatePostre(() => setModal(null));
   const remove = useDeletePostre();
 
-  if (!puedeVer('verPostres')) {
+  if (!puedeAcceder) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -29,7 +40,9 @@ export function PostresPage() {
 
   const list = postres.filter((p) => {
     const q = search.toLowerCase();
-    return !q || (p.nombre || '').toLowerCase().includes(q);
+    const matchQ = !q || (p.nombre || '').toLowerCase().includes(q);
+    const matchEstado = filtroEstado === '' || String(Boolean(p.estado)) === filtroEstado;
+    return matchQ && matchEstado;
   });
 
   return (
@@ -37,17 +50,36 @@ export function PostresPage() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Postres</h1>
-          <p className="page-sub">{postres.length} postres</p>
+          <p className="page-sub">
+            {postres.length} postres · {postres.filter((p) => p.estado).length} activos
+          </p>
         </div>
-        <button onClick={() => setModal({})} className="btn-primary">
-          <Plus size={15} /> Nuevo postre
-        </button>
+        {puedeCrear && (
+          <button onClick={() => setModal({})} className="btn-primary">
+            <Plus size={15} /> Nuevo postre
+          </button>
+        )}
       </div>
 
-      <div className="relative max-w-sm">
-        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
-        <input className="input pl-8" placeholder="Buscar postre..."
-          value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex flex-wrap gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[240px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+          <input
+            className="input pl-8"
+            placeholder="Buscar postre..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <select
+          className="input w-40"
+          value={filtroEstado}
+          onChange={(e) => setFiltroEstado(e.target.value)}
+        >
+          <option value="">Todos</option>
+          <option value="true">Activos</option>
+          <option value="false">Inactivos</option>
+        </select>
       </div>
 
       <div className="tbl-wrap">
@@ -55,15 +87,18 @@ export function PostresPage() {
           <thead>
             <tr>
               <th>Postre</th>
-              <th className="w-40"></th>
+              <th className="text-right">Costo</th>
+              <th>Estado</th>
+              <th>Registrado</th>
+              <th className="w-24"></th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
-              <tr><td colSpan={2} className="text-center py-10">Cargando...</td></tr>
+              <tr><td colSpan={5} className="text-center py-10">Cargando...</td></tr>
             ) : list.length === 0 ? (
               <tr>
-                <td colSpan={2} className="text-center py-12">
+                <td colSpan={5} className="text-center py-12">
                   <Shield size={28} className="mx-auto mb-2" style={{ color: 'var(--text-muted)' }} />
                   <p style={{ color: 'var(--text-muted)' }}>No hay postres registrados</p>
                 </td>
@@ -78,10 +113,21 @@ export function PostresPage() {
                     <span className="font-semibold text-sm">{p.nombre}</span>
                   </div>
                 </td>
+                <td className="text-right text-sm tabular-nums">{fmt(p.costo)}</td>
+                <td>
+                  <span className={p.estado ? 'badge badge-green' : 'badge badge-gray'}>
+                    {p.estado ? 'Activo' : 'Inactivo'}
+                  </span>
+                </td>
+                <td className="text-sm">{fmtFecha(p.fechaRegistro)}</td>
                 <td>
                   <div className="flex gap-1">
-                    <button onClick={() => setModal(p)} className="btn-ghost btn-icon btn-sm" title="Editar"><Edit2 size={14} /></button>
-                    <button onClick={() => setDeleteTarget(p)} className="btn-ghost btn-icon btn-sm text-red-500" title="Eliminar"><Trash2 size={14} /></button>
+                    {puedeEditar && (
+                      <button onClick={() => setModal(p)} className="btn-ghost btn-icon btn-sm" title="Editar"><Edit2 size={14} /></button>
+                    )}
+                    {puedeEliminar && (
+                      <button onClick={() => setDeleteTarget(p)} className="btn-ghost btn-icon btn-sm text-red-500" title="Eliminar"><Trash2 size={14} /></button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -110,32 +156,6 @@ export function PostresPage() {
             : create.mutate(d))}
         />
       )}
-    </div>
-  );
-}
-
-function PostreModal({ postre, onClose, busy, onSave }) {
-  const { register, handleSubmit } = useForm({ defaultValues: postre || {} });
-  return (
-    <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal-box max-w-sm">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
-            {postre?.postreId ? 'Editar postre' : 'Nuevo postre'}
-          </h2>
-          <button onClick={onClose} className="btn-ghost btn-icon">×</button>
-        </div>
-        <form onSubmit={handleSubmit(onSave)} className="space-y-4">
-          <div>
-            <label className="label">Nombre *</label>
-            <input className="input" placeholder="Nombre del postre" {...register('nombre', { required: true, maxLength: 200 })} />
-          </div>
-          <div className="flex gap-3 pt-1">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
-            <button type="submit" disabled={busy} className="btn-primary flex-1">{busy ? 'Guardando...' : 'Guardar'}</button>
-          </div>
-        </form>
-      </div>
     </div>
   );
 }

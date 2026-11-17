@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as escuelasService from '../services/escuelasService';
+import { getErrorMessage } from '../lib/apiErrors';
 
 export const useEscuelas = (params, options = {}) => {
   return useQuery({
@@ -27,7 +28,7 @@ export const useCreateEscuela = (onSuccess) => {
       toast.success('Escuela creada');
       onSuccess?.();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al crear escuela'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al crear escuela')),
   });
 };
 
@@ -37,10 +38,11 @@ export const useUpdateEscuela = (onSuccess) => {
     mutationFn: ({ escuelaId, data }) => escuelasService.updateEscuela(escuelaId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['escuelas'] });
+      qc.invalidateQueries({ queryKey: ['escuela'] });
       toast.success('Escuela actualizada');
       onSuccess?.();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al actualizar escuela'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al actualizar escuela')),
   });
 };
 
@@ -53,6 +55,6 @@ export const useDeleteEscuela = (onSuccess) => {
       toast.success('Escuela eliminada');
       onSuccess?.();
     },
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al eliminar escuela'),
+    onError: (e) => toast.error(getErrorMessage(e, 'Error al eliminar escuela')),
   });
 };

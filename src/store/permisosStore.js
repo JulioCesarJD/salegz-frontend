@@ -91,6 +91,18 @@ export const P = Object.freeze({
     Eliminar: 'Conduces.Eliminar',
     GenerarJornada: 'Conduces.GenerarJornada',
   },
+  Recetas: {
+    Ver: 'Recetas.Ver',
+    Crear: 'Recetas.Crear',
+    Editar: 'Recetas.Editar',
+    Eliminar: 'Recetas.Eliminar',
+  },
+  MenuSemanal: {
+    Ver: 'MenuSemanal.Ver',
+    Crear: 'MenuSemanal.Crear',
+    Editar: 'MenuSemanal.Editar',
+    Eliminar: 'MenuSemanal.Eliminar',
+  },
 })
 
 /**
@@ -202,6 +214,18 @@ export const LEGACY_PERMISSION_MAP = {
   editarConduces: P.Conduces.Editar,
   eliminarConduces: P.Conduces.Eliminar,
   generarJornadaConduces: P.Conduces.GenerarJornada,
+
+  // Recetas
+  verRecetas: P.Recetas.Ver,
+  crearRecetas: P.Recetas.Crear,
+  editarRecetas: P.Recetas.Editar,
+  eliminarRecetas: P.Recetas.Eliminar,
+
+  // Menú semanal
+  verMenuSemanal: P.MenuSemanal.Ver,
+  crearMenuSemanal: P.MenuSemanal.Crear,
+  editarMenuSemanal: P.MenuSemanal.Editar,
+  eliminarMenuSemanal: P.MenuSemanal.Eliminar,
 
   // Módulos sin respaldo en la API: visibles para usuarios autenticados.
   verOrdenes: AUTHENTICATED,
