@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+
 import {
   LayoutDashboard,
   FileText,
+  FilePlus,
   Users,
   Package,
   Tag,
@@ -44,6 +46,13 @@ const NAV_ITEMS = [
     label: "Facturas",
     icon: FileText,
     permission: "Facturas.Ver",
+    end: true, // ← clave: solo activo en /facturas exacto
+  },
+  {
+    to: "/facturas/nueva",
+    label: "Crear Factura",
+    icon: FilePlus,
+    permission: "Facturas.Crear", // o "Facturas.Ver" si no tienes ese permiso
   },
   {
     to: "/notas-credito",
@@ -174,6 +183,7 @@ export function Sidebar({ collapsed, onToggle }) {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const isAdmin = isAdminUser(user);
+  const empresaNombre = user?.empresaNombre || "";
 
   // Suscripción a los códigos: el sidebar se re-renderiza si cambian los permisos
   const codigos = usePermisosStore((s) => s.codigos);
@@ -223,7 +233,7 @@ export function Sidebar({ collapsed, onToggle }) {
             className="font-extrabold text-base tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
-            SaleGz
+            {empresaNombre}
           </span>
         )}
         {!isMobile && onToggle && (
@@ -254,6 +264,7 @@ export function Sidebar({ collapsed, onToggle }) {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.end}
               onClick={isMobile ? handleMobileNav : undefined}
               title={!isMobile && collapsed ? item.label : undefined}
               className={({ isActive }) =>

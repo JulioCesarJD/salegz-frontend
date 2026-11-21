@@ -1,56 +1,53 @@
-// Único punto de acceso a la sesión persistida.
-// Evita importar el store de auth desde el cliente HTTP (dependencia circular).
-const ACCESS_TOKEN_KEY = 'sg_token'
-const REFRESH_TOKEN_KEY = 'sg_refresh_token'
-const USER_KEY = 'sg_user'
+// UBICACIÓN: src/lib/tokenStorage.js
 
-const safeParse = (value) => {
-  try {
-    return JSON.parse(value)
-  } catch {
-    return null
-  }
+// Sesión exclusivamente en memoria.
+// No se guardan tokens en localStorage ni sessionStorage.
+
+let accessToken = null
+let currentUser = null
+
+// Limpia los restos de la versión anterior.
+if (typeof window !== 'undefined') {
+  localStorage.removeItem('sg_token')
+  localStorage.removeItem('sg_refresh_token')
+  localStorage.removeItem('sg_user')
 }
 
-export function getAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_KEY)
+export const getAccessToken = () => accessToken
+
+export const getStoredUser = () => currentUser
+
+export const saveUser = (user) => {
+  currentUser = user || null
 }
 
-export function getRefreshToken() {
-  return localStorage.getItem(REFRESH_TOKEN_KEY)
-}
-
-export function getStoredUser() {
-  return safeParse(localStorage.getItem(USER_KEY))
-}
-
-export function saveUser(user) {
-  if (user) localStorage.setItem(USER_KEY, JSON.stringify(user))
-  else localStorage.removeItem(USER_KEY)
-}
-
-export function saveTokens({ accessToken, refreshToken }) {
-  if (accessToken) localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-  if (refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+export function saveTokens({ accessToken: at }) {
+  accessToken = at || null
 }
 
 /**
- * Guarda la respuesta completa de /auth/login o /auth/refresh.
- * @param {{ accessToken: string, refreshToken: string, usuario: object }} session
+ * Guarda la sesión recibida desde /api/auth/login.
+ *
+ * @param {{ accessToken: string, expiracion?: string, usuario?: object }} session
  */
 export function saveSession(session) {
   if (!session) return
+
   saveTokens(session)
-  if (session.usuario) saveUser(session.usuario)
+
+  if (session.usuario) {
+    saveUser(session.usuario)
+  }
 }
 
 export function clearSession() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY)
-  localStorage.removeItem(REFRESH_TOKEN_KEY)
-  localStorage.removeItem(USER_KEY)
+  accessToken = null
+  currentUser = null
 }
 
-export const SESSION_UPDATED_EVENT = 'sg:session-updated'
+// Eventos de sincronización interna.
+
 export const SESSION_EXPIRED_EVENT = 'sg:session-expired'
-// La API rechazó una acción por permisos: hay que volver a leer el usuario.
+
+// La API rechazó una acción por permisos.
 export const PERMISSIONS_CHANGED_EVENT = 'sg:permissions-changed'

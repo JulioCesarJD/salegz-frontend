@@ -1,33 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Trash2 } from 'lucide-react';
-import { useActualizarFactura } from '../../../hooks/useFacturas';
-import { useSearchClientes } from '../../../hooks/useFacturas';
-import { fmt } from '../../../utils/format';
-import { NumInput } from '../../common/NumInput';
-import * as commonService from '../../../services/commonService';
-import { PrecioSelectorModal } from '../../common/PrecioSelectorModal';
-import { TIPO_COMPROBANTE, METODOS_PAGO } from '../../../constants/facturacion';
-
-const TIPO_FACTURA = [
-  { value: 0, label: 'Contado' },
-  { value: 1, label: 'Crédito' },
-];
+import React, { useState, useEffect } from "react";
+import { Search, Trash2 } from "lucide-react";
+import {
+  useActualizarFactura,
+  useSearchClientes,
+} from "../../../hooks/useFacturas";
+import { fmt } from "../../../utils/format";
+import { NumInput } from "../../common/NumInput";
+import * as commonService from "../../../services/commonService";
+import { PrecioSelectorModal } from "../../common/PrecioSelectorModal";
+import {
+  TIPO_FACTURA,
+  TIPO_COMPROBANTE,
+  TIPO_COMPROBANTE_API,
+  METODOS_PAGO,
+} from "../../../constants/facturacion";
 
 export function EditarFacturaModal({ factura, onClose, onSaveSuccess }) {
-  const [tipoPago,        setTipoPago]        = useState(factura.tipoPago        || 'Efectivo');
-  const [tipoFactura,     setTipoFactura]     = useState(factura.tipoFactura     ?? 0);
-  const [tipoComprobante, setTipoComprobante] = useState(factura.tipoComprobante ?? 1);
-  const [clienteSel,      setClienteSel]      = useState(
-    factura.clienteId ? { clienteId: factura.clienteId, nombre: factura.nombreCliente } : null
+  const [tipoPago, setTipoPago] = useState(factura.tipoPago || "Efectivo");
+  const [tipoFactura, setTipoFactura] = useState(
+    factura.tipo ? 1 : (factura.tipoFactura ?? 0),
   );
-  const [nombreCliente,   setNombreCliente]   = useState(factura.nombreCliente || '');
-  const [clienteSearch,   setClienteSearch]   = useState('');
+  const [tipoComprobante, setTipoComprobante] = useState(
+    factura.tipoComprobante ?? "B02",
+  );
+  const [clienteSel, setClienteSel] = useState(
+    factura.clienteId
+      ? { clienteId: factura.clienteId, nombre: factura.nombreCliente }
+      : null,
+  );
+  const [nombreCliente, setNombreCliente] = useState(
+    factura.nombreCliente || "",
+  );
+  const [clienteSearch, setClienteSearch] = useState("");
 
-  const [detalles,        setDetalles]        = useState([]);
-  const [busqueda,        setBusqueda]        = useState('');
-  const [productos,       setProductos]       = useState([]);
+  const [detalles, setDetalles] = useState([]);
+  const [busqueda, setBusqueda] = useState("");
+  const [productos, setProductos] = useState([]);
   const [loadingProductos, setLoadingProductos] = useState(false);
-  const [precioModal,     setPrecioModal]     = useState(null);
+  const [precioModal, setPrecioModal] = useState(null);
 
   const { data: clientes = [] } = useSearchClientes(clienteSearch);
 
@@ -36,62 +46,92 @@ export function EditarFacturaModal({ factura, onClose, onSaveSuccess }) {
     onClose();
   });
 
-  // Cargar detalles existentes
+  const requiereRNC =
+    TIPO_COMPROBANTE_API[tipoComprobante]?.requiereRNC ?? false;
+
+  // Cargar detalles existentes normalizando nombres del DTO
   useEffect(() => {
     if (factura?.detalles) {
-      setDetalles(factura.detalles.map(d => ({
-        productoId: d.productoId,
-        producto:   d.producto,
-        cantidad:   d.cantidad,
-        precio:     d.precio ?? (d.subTotal / d.cantidad),
-        itbsPorc:   d.itbsPorc ?? 0,
-      })));
+      setDetalles(
+        factura.detalles.map((d) => {
+          const cantidad = Number(d.cantidad) || 0;
+          const subTotal = Number(d.subTotal) || 0;
+          const itbis = Number(d.itbis) || 0;
+          const base = Math.max(subTotal - itbis, 0);
+          const precio = cantidad > 0 ? base / cantidad : 0;
+          const itbisPorc =
+            d.itbisPorc ?? (base > 0 ? (itbis / base) * 100 : 0);
+
+          return {
+            productoId: d.productoId,
+            producto: d.productoDescripcion ?? d.producto ?? "—",
+            cantidad,
+            precio,
+            itbisPorc,
+            costo: d.costo ?? 0,
+            comision: d.comision ?? 0,
+          };
+        }),
+      );
     }
   }, [factura]);
 
   // Buscar productos con debounce
   useEffect(() => {
-    if (!busqueda.trim()) { setProductos([]); return; }
+    if (!busqueda.trim()) {
+      setProductos([]);
+      return;
+    }
     const timer = setTimeout(async () => {
       setLoadingProductos(true);
       try {
         const res = await commonService.searchProductos(busqueda);
         setProductos(res);
-      } catch { setProductos([]); }
-      finally { setLoadingProductos(false); }
+      } catch {
+        setProductos([]);
+      } finally {
+        setLoadingProductos(false);
+      }
     }, 300);
     return () => clearTimeout(timer);
   }, [busqueda]);
 
   const handleProductoClick = (p) => {
-    const precios = [p.precio1, p.precio2, p.precio3].filter(v => v > 0);
-    if (precios.length > 1) { setPrecioModal(p); setBusqueda(''); }
-    else agregarProducto(p, p.precio1);
+    const precios = [p.precio1, p.precio2, p.precio3].filter((v) => v > 0);
+    if (precios.length > 1) {
+      setPrecioModal(p);
+      setBusqueda("");
+    } else {
+      agregarProducto(p, p.precio1);
+    }
   };
 
   const agregarProducto = (p, precio) => {
-    setDetalles(prev => {
-      const idx = prev.findIndex(d => d.productoId === p.productoId);
+    setDetalles((prev) => {
+      const idx = prev.findIndex((d) => d.productoId === p.productoId);
       if (idx >= 0) {
         const copy = [...prev];
         copy[idx] = { ...copy[idx], cantidad: copy[idx].cantidad + 1 };
         return copy;
       }
-      return [...prev, {
-        productoId: p.productoId,
-        producto:   p.descripcion,
-        cantidad:   1,
-        precio,
-        itbsPorc:   p.itbsPorc ?? 0,
-      }];
+      return [
+        ...prev,
+        {
+          productoId: p.productoId,
+          producto: p.descripcion,
+          cantidad: 1,
+          precio,
+          itbisPorc: p.itbisPorc ?? p.itbis ?? 0,
+        },
+      ];
     });
-    setBusqueda('');
+    setBusqueda("");
     setProductos([]);
     setPrecioModal(null);
   };
 
   const cambiarCantidad = (idx, val) => {
-    setDetalles(prev => {
+    setDetalles((prev) => {
       const copy = [...prev];
       copy[idx] = { ...copy[idx], cantidad: parseFloat(val) || 0 };
       return copy;
@@ -99,34 +139,45 @@ export function EditarFacturaModal({ factura, onClose, onSaveSuccess }) {
   };
 
   const eliminarDetalle = (idx) =>
-    setDetalles(prev => prev.filter((_, i) => i !== idx));
+    setDetalles((prev) => prev.filter((_, i) => i !== idx));
 
-  // Totales
   const subtotalBruto = detalles.reduce((s, d) => s + d.precio * d.cantidad, 0);
-  const itbs          = detalles.reduce((s, d) => s + d.precio * d.cantidad * (d.itbsPorc / 100), 0);
-  const total         = subtotalBruto + itbs;
+  const itbis = detalles.reduce(
+    (s, d) => s + d.precio * d.cantidad * (d.itbisPorc / 100),
+    0,
+  );
+  const total = subtotalBruto + itbis;
 
   const handleGuardar = () => {
-    if (detalles.length === 0) { alert('Agrega al menos un producto.'); return; }
+    if (detalles.length === 0) {
+      alert("Agrega al menos un producto.");
+      return;
+    }
+
+    if (requiereRNC && !clienteSel?.cedula) {
+      alert(`El comprobante ${tipoComprobante} requiere un cliente con RNC.`);
+      return;
+    }
 
     actualizarMutation.mutate({
       facturaId: factura.facturaId,
       data: {
-        clienteId:      clienteSel?.clienteId || null,
-        nombreCliente:  clienteSel?.nombre || nombreCliente || 'Consumidor Final',
-        tipoPago,
-        tipoFactura,
+        clienteId: clienteSel?.clienteId || null,
+        nombreCliente:
+          clienteSel?.nombre || nombreCliente || "Consumidor Final",
+        tipo: tipoFactura === 1,
         tipoComprobante,
-        detalles: detalles.map(d => {
-          const base  = d.precio * d.cantidad;
-          const itbsD = base * (d.itbsPorc / 100);
+        metodoPago: tipoFactura === 1 ? null : tipoPago,
+        detalles: detalles.map((d) => {
+          const base = d.precio * d.cantidad;
+          const itbisD = base * (d.itbisPorc / 100);
           return {
             productoId: d.productoId,
-            cantidad:   d.cantidad,
-            subTotal:   base + itbsD,
-            itbs:       itbsD,
-            costo:      d.costo    ?? 0,
-            comision:   d.comision ?? 0,
+            cantidad: d.cantidad,
+            subTotal: base + itbisD,
+            itbis: itbisD,
+            costo: d.costo ?? 0,
+            comision: d.comision ?? 0,
           };
         }),
       },
@@ -134,94 +185,169 @@ export function EditarFacturaModal({ factura, onClose, onSaveSuccess }) {
   };
 
   return (
-    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+    <div
+      className="modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="modal-box max-w-2xl overflow-y-auto max-h-[90vh]">
-
         {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>
+            <h2
+              className="text-lg font-bold"
+              style={{ color: "var(--text-primary)" }}
+            >
               Editar factura #{factura.facturaId}
             </h2>
-            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               Solo facturas en estado <strong>Cuenta Abierta</strong>
             </p>
           </div>
-          <button onClick={onClose} className="btn-ghost btn-icon text-lg leading-none rounded-lg">×</button>
+          <button
+            onClick={onClose}
+            className="btn-ghost btn-icon text-lg leading-none rounded-lg"
+          >
+            ×
+          </button>
         </div>
 
         {/* Fila: Tipo Factura · Comprobante · Método de pago */}
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <div>
             <label className="label">Tipo de factura</label>
-            <select className="input" value={tipoFactura}
-              onChange={e => setTipoFactura(parseInt(e.target.value))}>
-              {TIPO_FACTURA.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
+            <select
+              className="input"
+              value={tipoFactura}
+              onChange={(e) => setTipoFactura(parseInt(e.target.value))}
+            >
+              {TIPO_FACTURA.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
               ))}
             </select>
           </div>
           <div>
-            <label className="label">Comprobante</label>
-            <select className="input" value={tipoComprobante}
-              onChange={e => setTipoComprobante(parseInt(e.target.value))}>
-              {TIPO_COMPROBANTE.map(t => (
-                <option key={t.value} value={t.value}>{t.label}</option>
+            <label className="label">Comprobante (NCF)</label>
+            <select
+              className="input"
+              value={tipoComprobante}
+              onChange={(e) => setTipoComprobante(e.target.value)}
+            >
+              {TIPO_COMPROBANTE.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
               ))}
             </select>
           </div>
           <div>
             <label className="label">Método de pago</label>
-            <select className="input" value={tipoPago}
-              onChange={e => setTipoPago(e.target.value)}>
-              {METODOS_PAGO.map(t => <option key={t} value={t}>{t}</option>)}
+            <select
+              className="input"
+              value={tipoPago}
+              disabled={tipoFactura === 1}
+              onChange={(e) => setTipoPago(e.target.value)}
+            >
+              {METODOS_PAGO.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </select>
           </div>
         </div>
 
         {/* Cliente */}
         <div className="mb-4">
-          <label className="label">Cliente</label>
+          <label className="label">
+            Cliente
+            {requiereRNC && (
+              <span className="text-red-500 ml-1">* RNC requerido</span>
+            )}
+          </label>
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2"
-              style={{ color: 'var(--text-muted)' }} />
-            <input className="input pl-8" placeholder="Buscar cliente..."
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2"
+              style={{ color: "var(--text-muted)" }}
+            />
+            <input
+              className="input pl-8"
+              placeholder="Buscar cliente..."
               value={clienteSearch}
-              onChange={e => setClienteSearch(e.target.value)} />
+              onChange={(e) => setClienteSearch(e.target.value)}
+            />
           </div>
 
           {clientes.length > 0 && (
-            <div className="mt-1 rounded-lg border shadow-lg max-h-40 overflow-y-auto"
-              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-card)' }}>
-              {clientes.map(c => (
-                <button key={c.clienteId} type="button"
+            <div
+              className="mt-1 rounded-lg border shadow-lg max-h-40 overflow-y-auto"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--bg-card)",
+              }}
+            >
+              {clientes.map((c) => (
+                <button
+                  key={c.clienteId}
+                  type="button"
                   className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--bg-tertiary)] transition-colors border-b last:border-b-0"
-                  style={{ borderColor: 'var(--border)' }}
-                  onClick={() => { setClienteSel(c); setClienteSearch(''); setNombreCliente(c.nombre); }}>
-                  <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{c.nombre}</div>
+                  style={{ borderColor: "var(--border)" }}
+                  onClick={() => {
+                    setClienteSel(c);
+                    setClienteSearch("");
+                    setNombreCliente(c.nombre);
+                  }}
+                >
+                  <div
+                    className="font-medium"
+                    style={{ color: "var(--text-primary)" }}
+                  >
+                    {c.nombre}
+                  </div>
                   {c.cedula && (
-                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>Cédula: {c.cedula}</div>
+                    <div
+                      className="text-xs"
+                      style={{ color: "var(--text-muted)" }}
+                    >
+                      Cédula: {c.cedula}
+                    </div>
                   )}
                 </button>
               ))}
             </div>
           )}
 
-          {/* Cliente seleccionado */}
           {clienteSel ? (
-            <div className="mt-2 p-2 rounded-lg flex items-center justify-between"
-              style={{ backgroundColor: 'var(--bg-tertiary)' }}>
-              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+            <div
+              className="mt-2 p-2 rounded-lg flex items-center justify-between"
+              style={{ backgroundColor: "var(--bg-tertiary)" }}
+            >
+              <span
+                className="text-sm font-medium"
+                style={{ color: "var(--text-primary)" }}
+              >
                 {clienteSel.nombre}
               </span>
-              <button type="button"
-                onClick={() => { setClienteSel(null); setNombreCliente(''); }}
-                className="text-red-400 hover:text-red-600 text-lg leading-none">×</button>
+              <button
+                type="button"
+                onClick={() => {
+                  setClienteSel(null);
+                  setNombreCliente("");
+                }}
+                className="text-red-400 hover:text-red-600 text-lg leading-none"
+              >
+                ×
+              </button>
             </div>
           ) : (
-            <input className="input mt-2" placeholder="O escribe nombre del cliente"
+            <input
+              className="input mt-2"
+              placeholder="O escribe nombre del cliente"
               value={nombreCliente}
-              onChange={e => setNombreCliente(e.target.value)} />
+              onChange={(e) => setNombreCliente(e.target.value)}
+            />
           )}
         </div>
 
@@ -229,37 +355,85 @@ export function EditarFacturaModal({ factura, onClose, onSaveSuccess }) {
         <div className="mb-4">
           <label className="label">Agregar producto</label>
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2"
-              style={{ color: 'var(--text-muted)' }} />
-            <input className="input pl-8 w-full" placeholder="Buscar producto..."
-              value={busqueda} onChange={e => setBusqueda(e.target.value)} />
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2"
+              style={{ color: "var(--text-muted)" }}
+            />
+            <input
+              className="input pl-8 w-full"
+              placeholder="Buscar producto..."
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+            />
           </div>
           {(loadingProductos || productos.length > 0) && (
-            <div className="mt-1 rounded-lg border shadow-lg overflow-hidden"
-              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-card)' }}>
-              {loadingProductos
-                ? <p className="text-sm text-center py-3" style={{ color: 'var(--text-muted)' }}>Buscando...</p>
-                : productos.map(p => (
-                  <button key={p.productoId} type="button"
+            <div
+              className="mt-1 rounded-lg border shadow-lg overflow-hidden"
+              style={{
+                borderColor: "var(--border)",
+                backgroundColor: "var(--bg-card)",
+              }}
+            >
+              {loadingProductos ? (
+                <p
+                  className="text-sm text-center py-3"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  Buscando...
+                </p>
+              ) : (
+                productos.map((p) => (
+                  <button
+                    key={p.productoId}
+                    type="button"
                     className="w-full text-left px-4 py-3 hover:bg-[var(--bg-tertiary)] transition-colors"
-                    onClick={() => handleProductoClick(p)}>
+                    onClick={() => handleProductoClick(p)}
+                  >
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                      <span
+                        className="text-sm font-medium"
+                        style={{ color: "var(--text-primary)" }}
+                      >
                         {p.descripcion}
                       </span>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs px-2 py-0.5 rounded"
-                          style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-muted)' }}>
+                        <span
+                          className="text-xs px-2 py-0.5 rounded"
+                          style={{
+                            backgroundColor: "var(--bg-tertiary)",
+                            color: "var(--text-muted)",
+                          }}
+                        >
                           Stock: {p.cantidad}
                         </span>
-                        <span className="text-sm font-bold" style={{ color: 'var(--brand)' }}>{fmt(p.precio1)}</span>
-                        {p.precio2 > 0 && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>· {fmt(p.precio2)}</span>}
-                        {p.precio3 > 0 && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>· {fmt(p.precio3)}</span>}
+                        <span
+                          className="text-sm font-bold"
+                          style={{ color: "var(--brand)" }}
+                        >
+                          {fmt(p.precio1)}
+                        </span>
+                        {p.precio2 > 0 && (
+                          <span
+                            className="text-xs"
+                            style={{ color: "var(--text-muted)" }}
+                          >
+                            · {fmt(p.precio2)}
+                          </span>
+                        )}
+                        {p.precio3 > 0 && (
+                          <span
+                            className="text-xs"
+                            style={{ color: "var(--text-muted)" }}
+                          >
+                            · {fmt(p.precio3)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </button>
                 ))
-              }
+              )}
             </div>
           )}
         </div>
@@ -279,49 +453,74 @@ export function EditarFacturaModal({ factura, onClose, onSaveSuccess }) {
             <tbody>
               {detalles.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-8 text-sm"
-                    style={{ color: 'var(--text-muted)' }}>
+                  <td
+                    colSpan={5}
+                    className="text-center py-8 text-sm"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     Sin productos — busca uno arriba
                   </td>
                 </tr>
-              ) : detalles.map((d, i) => (
-                <tr key={i}>
-                  <td className="font-medium text-sm">{d.producto}</td>
-                  <td className="text-right text-sm tabular-nums">{fmt(d.precio)}</td>
-                  <td className="text-center">
-                    <NumInput
-                      className="input text-center text-sm py-1 w-16 mx-auto"
-                      value={d.cantidad}
-                      onChange={e => cambiarCantidad(i, e.target.value)}
-                    />
-                  </td>
-                  <td className="text-right font-semibold text-sm tabular-nums">
-                    {fmt(d.precio * d.cantidad)}
-                  </td>
-                  <td>
-                    <button onClick={() => eliminarDetalle(i)}
-                      className="btn-ghost btn-icon btn-sm text-red-400">
-                      <Trash2 size={13} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              ) : (
+                detalles.map((d, i) => (
+                  <tr key={i}>
+                    <td className="font-medium text-sm">{d.producto}</td>
+                    <td className="text-right text-sm tabular-nums">
+                      {fmt(d.precio)}
+                    </td>
+                    <td className="text-center">
+                      <NumInput
+                        className="input text-center text-sm py-1 w-16 mx-auto"
+                        value={d.cantidad}
+                        onChange={(e) => cambiarCantidad(i, e.target.value)}
+                      />
+                    </td>
+                    <td className="text-right font-semibold text-sm tabular-nums">
+                      {fmt(d.precio * d.cantidad)}
+                    </td>
+                    <td>
+                      <button
+                        onClick={() => eliminarDetalle(i)}
+                        className="btn-ghost btn-icon btn-sm text-red-400"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Totales */}
         {detalles.length > 0 && (
-          <div className="space-y-1.5 border-t pt-3 mb-5" style={{ borderColor: 'var(--border)' }}>
+          <div
+            className="space-y-1.5 border-t pt-3 mb-5"
+            style={{ borderColor: "var(--border)" }}
+          >
             {[
-              ['Subtotal', fmt(subtotalBruto)],
-              ['ITBS',     fmt(itbs)],
-              ['Total',    fmt(total), true],
+              ["Subtotal", fmt(subtotalBruto)],
+              ["ITBIS", fmt(itbis)],
+              ["Total", fmt(total), true],
             ].map(([l, v, bold]) => (
               <div key={l} className="flex justify-between">
-                <span className="text-sm" style={{ color: 'var(--text-muted)' }}>{l}</span>
-                <span className={bold ? 'text-lg font-extrabold' : 'text-sm font-medium'}
-                  style={{ color: bold ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                <span
+                  className="text-sm"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {l}
+                </span>
+                <span
+                  className={
+                    bold ? "text-lg font-extrabold" : "text-sm font-medium"
+                  }
+                  style={{
+                    color: bold
+                      ? "var(--text-primary)"
+                      : "var(--text-secondary)",
+                  }}
+                >
                   {v}
                 </span>
               </div>
@@ -331,21 +530,23 @@ export function EditarFacturaModal({ factura, onClose, onSaveSuccess }) {
 
         {/* Botones */}
         <div className="flex gap-3">
-          <button onClick={onClose} className="btn-secondary flex-1">Cancelar</button>
+          <button onClick={onClose} className="btn-secondary flex-1">
+            Cancelar
+          </button>
           <button
             onClick={handleGuardar}
             disabled={actualizarMutation.isPending || detalles.length === 0}
-            className="btn-primary flex-1">
-            {actualizarMutation.isPending ? 'Guardando...' : 'Guardar cambios'}
+            className="btn-primary flex-1"
+          >
+            {actualizarMutation.isPending ? "Guardando..." : "Guardar cambios"}
           </button>
         </div>
-
       </div>
 
       {precioModal && (
         <PrecioSelectorModal
           producto={precioModal}
-          onSelect={precio => agregarProducto(precioModal, precio)}
+          onSelect={(precio) => agregarProducto(precioModal, precio)}
           onClose={() => setPrecioModal(null)}
         />
       )}

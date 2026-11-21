@@ -1,13 +1,10 @@
 // hooks/useFacturas.js
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import * as facturasService from '../services/facturasService';
 import * as commonService from '../services/commonService';
 
-/**
- * La API no filtra por tipo de comprobante; se conserva el mapa para no
- * romper los componentes existentes hasta la Fase 4.
- */
+/** Se conserva por compatibilidad; la API aún no maneja tipo de comprobante. */
 export const TIPO_COMPROBANTE_MAP = {
   consumidorFinal: 0,
   fiscal: 1,
@@ -16,20 +13,16 @@ export const TIPO_COMPROBANTE_MAP = {
 };
 
 /**
- * Firma conservada por compatibilidad con las pantallas actuales.
- * Filtros reales enviados: estado, fechaDesde, fechaHasta, search.
- * `soloMios`, `usuarioId` y `tipoComprobante` no existen en la API.
+ * Lista paginada de facturas.
+ * filters: { search, estado, fechaDesde, fechaHasta, page, pageSize }
+ * Devuelve { items, page, pageSize, totalCount, resumen }.
  */
-export const useFacturas = (estado, desde, hasta, soloMios, usuarioId, tipoComprobante, options = {}) => {
+export const useFacturas = (filters = {}, options = {}) => {
   return useQuery({
-    queryKey: ['facturas', estado, desde, hasta, soloMios, usuarioId, tipoComprobante],
-    queryFn: () =>
-      facturasService.getFacturas({
-        estado,
-        fechaDesde: desde,
-        fechaHasta: hasta,
-      }),
+    queryKey: ['facturas', filters],
+    queryFn: () => facturasService.getFacturasPaged(filters),
     enabled: options.enabled ?? true,
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -49,14 +42,13 @@ export const useCreateFactura = (onSuccessCallback) => {
 
     onSuccess: (res, variables) => {
       qc.invalidateQueries({ queryKey: ['facturas'] });
+      qc.invalidateQueries({ queryKey: ['productos-search'] }); // el stock cambió
       toast.success('Factura creada');
-
-      if (onSuccessCallback) {
-        onSuccessCallback(res, variables);
-      }
+      onSuccessCallback?.(res, variables);
     },
 
-    onError: (e) => toast.error(e.response?.data?.message || 'Error al crear factura'),
+    onError: (e) =>
+      toast.error(e.response?.data?.message || e.response?.data?.title || 'Error al crear factura'),
   });
 };
 
@@ -69,7 +61,7 @@ export const useSaldarFactura = (onSuccessCallback) => {
       qc.invalidateQueries({ queryKey: ['facturas'] });
       qc.invalidateQueries({ queryKey: ['factura'] });
       toast.success('Cobro realizado');
-      if (onSuccessCallback) onSuccessCallback();
+      onSuccessCallback?.();
     },
     onError: (e) => toast.error(e.response?.data?.message || 'Error al cobrar'),
   });
@@ -81,6 +73,8 @@ export const useCancelarFactura = () => {
     mutationFn: facturasService.cancelarFactura,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['facturas'] });
+      qc.invalidateQueries({ queryKey: ['factura'] });
+      qc.invalidateQueries({ queryKey: ['productos-search'] }); // el stock se repone
       toast.success('Factura cancelada');
     },
     onError: (e) => toast.error(e.response?.data?.message || 'Error al cancelar'),
@@ -111,14 +105,26 @@ export const useEmpresaInfo = () => {
   return { empresa: em.data, control: ct.data, isLoading: em.isLoading || ct.isLoading };
 };
 
-/** @deprecated La API no expone PUT /api/facturas/{id}. */
-export const useActualizarFactura = (onSuccess) => {
+export const useActualizarFactura = (onSuccessCallback) => {
+  const qc = useQueryClient();
+
   return useMutation({
-    mutationFn: facturasService.actualizarFactura,
-    onSuccess: () => {
+    mutationFn: ({ facturaId, data }) =>
+      facturasService.actualizarFactura(facturaId, data),
+
+    onSuccess: (res, variables) => {
+      qc.invalidateQueries({ queryKey: ['facturas'] });
+      qc.invalidateQueries({ queryKey: ['factura', variables.facturaId] });
+      qc.invalidateQueries({ queryKey: ['productos-search'] }); // el stock pudo cambiar
       toast.success('Factura actualizada');
-      onSuccess?.();
+      onSuccessCallback?.(res, variables);
     },
-    onError: (e) => toast.error(e.response?.data?.message || e.message || 'Error al actualizar factura'),
+
+    onError: (e) =>
+      toast.error(
+        e.response?.data?.message ||
+        e.response?.data?.title ||
+        'Error al actualizar factura'
+      ),
   });
 };
