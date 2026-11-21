@@ -12,26 +12,38 @@ import { useControles } from "../../../hooks/useControles";
 import { fmt } from "../../../utils/format";
 import { NumInput } from "../../common/NumInput";
 import { localDate } from "../../../utils/date";
+import {
+  TIPO_FACTURA,
+  TIPO_COMPROBANTE,
+  TIPO_COMPROBANTE_API,
+  METODO_PAGO_API,
+  METODOS_PAGO,
+} from "../../../constants/facturacion";
 
-const TIPO_FACTURA = [
-  { value: 0, label: "Contado" },
-  { value: 1, label: "Crédito" },
-];
-
-/** La API usa: 1=Efectivo, 2=Cheque, 3=Tarjeta, 4=Transferencia. */
-const METODO_PAGO_API = {
-  Efectivo: 1,
-  Cheque: 2,
-  Tarjeta: 3,
-  Transferencia: 4,
+const DEFAULTS = {
+  tipoFactura: 0,
+  tipoPago: "Efectivo",
+  tipoComprobante: "B02", // Consumo por defecto
+  fechaVencimiento: "",
+  detalles: [],
+  nombreCliente: "",
 };
-
-const METODOS = Object.keys(METODO_PAGO_API);
 
 const addDays = (days) => {
   const d = new Date();
   d.setDate(d.getDate() + days);
   return d;
+};
+
+const calcLinea = (d) => {
+  const cantidad = parseFloat(d.cantidad || 0) || 0;
+  const precio = parseFloat(d.precio || 0) || 0;
+  const bruto = cantidad * precio;
+  const descuento = parseFloat(d.descuento || 0) || 0;
+  const subTotal = bruto - descuento;
+  const exento = Boolean(d.exento);
+  const itbis = exento ? 0 : subTotal * ((Number(d.itbis) || 0) / 100);
+  return { cantidad, precio, bruto, descuento, subTotal, exento, itbis };
 };
 
 export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
@@ -55,15 +67,7 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
     control: formControl,
     setValue,
     reset,
-  } = useForm({
-    defaultValues: {
-      tipoFactura: 0,
-      tipoPago: "Efectivo",
-      fechaVencimiento: "",
-      detalles: [],
-      nombreCliente: "",
-    },
-  });
+  } = useForm({ defaultValues: DEFAULTS });
 
   const { fields, append, remove, replace } = useFieldArray({
     control: formControl,
@@ -73,20 +77,18 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
   const { data: clientes = [] } = useSearchClientes(clienteSearch);
   const { data: productos = [] } = useSearchProductos(productoSearch);
 
-  const tipoFactura = Number(watch("tipoFactura"));
-  const esCredito = tipoFactura === 1;
+  const esCredito = Number(watch("tipoFactura")) === 1;
   const nombreCliente = watch("nombreCliente");
   const detalles = watch("detalles") || [];
+  const tipoComprobanteActual = watch("tipoComprobante") || "B02";
+
+  // Determina si el comprobante elegido exige RNC/cédula
+  const requiereRNC =
+    TIPO_COMPROBANTE_API[tipoComprobanteActual]?.requiereRNC ?? false;
 
   const limpiarFormulario = () => {
     replace([]);
-    reset({
-      tipoFactura: 0,
-      tipoPago: "Efectivo",
-      fechaVencimiento: "",
-      detalles: [],
-      nombreCliente: "",
-    });
+    reset(DEFAULTS);
     setClienteSearch("");
     setProductoSearch("");
     setClienteSel(null);
@@ -94,28 +96,39 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
     setEsClienteGenerico(false);
   };
 
+  const handleDiscard = () => {
+    limpiarFormulario();
+    onClose();
+  };
+
   const totales = detalles.reduce(
     (acc, d) => {
-      const cantidad = parseFloat(d.cantidad || 0);
-      const precio = parseFloat(d.precio || 0);
-      const base = cantidad * precio;
-      const exentoLinea = Boolean(d.exento);
-      const itbisPct = parseFloat(d.itbis || 0);
-
-      if (exentoLinea) {
-        acc.exento += base;
-      } else {
-        acc.gravado += base;
-        acc.itbis += base * (itbisPct / 100);
+      const l = calcLinea(d);
+      if (l.exento) acc.exento += l.subTotal;
+      else {
+        acc.gravado += l.subTotal;
+        acc.itbis += l.itbis;
       }
       return acc;
     },
     { exento: 0, gravado: 0, itbis: 0 },
   );
-
   const total = totales.exento + totales.gravado + totales.itbis;
 
   const agregarProducto = (p) => {
+    const esServicio = Boolean(p.servicios);
+    const stock = Number(p.cantidad) || 0;
+
+    if (!esServicio && stock < 1) {
+      toast.error("Este producto no tiene stock disponible");
+      return;
+    }
+    if (fields.some((f) => Number(f.productoId) === Number(p.productoId))) {
+      toast.error("El producto ya está en la factura");
+      setProductoSearch("");
+      return;
+    }
+
     append({
       productoId: p.productoId,
       descripcion: p.descripcion,
@@ -123,7 +136,9 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
       precio: String(p.precio1 || 0),
       itbis: Number(p.itbis) || 0,
       exento: Boolean(p.exento),
-      descuento: 0,
+      descuento: "0",
+      stock,
+      servicio: esServicio,
     });
     setProductoSearch("");
   };
@@ -132,14 +147,8 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
     if (detalles.length > 0 || clienteSel || productoSearch || nombreCliente) {
       setConfirmCancel(true);
     } else {
-      limpiarFormulario();
-      onClose();
+      handleDiscard();
     }
-  };
-
-  const handleDiscard = () => {
-    limpiarFormulario();
-    setTimeout(() => onClose(), 0);
   };
 
   const handleClienteGenericoChange = (e) => {
@@ -158,20 +167,44 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
       return;
     }
 
+    // Validación RNC si el comprobante lo requiere
+    if (requiereRNC && !clienteSel?.cedula) {
+      toast.error(
+        `El comprobante ${tipoComprobanteActual} requiere un cliente con RNC/Cédula`,
+      );
+      return;
+    }
+
+    if (esCredito && !clienteSel) {
+      toast.error("Una factura a crédito requiere seleccionar un cliente");
+      return;
+    }
+
+    for (const d of data.detalles || []) {
+      const l = calcLinea(d);
+      if (!d.productoId || l.cantidad <= 0) {
+        toast.error(`Cantidad inválida en "${d.descripcion}"`);
+        return;
+      }
+      if (!d.servicio && l.cantidad > Number(d.stock)) {
+        toast.error(
+          `Stock insuficiente para "${d.descripcion}" (disponible: ${d.stock})`,
+        );
+        return;
+      }
+      if (l.descuento < 0 || l.descuento > l.bruto) {
+        toast.error(
+          `El descuento de "${d.descripcion}" debe estar entre 0 y ${fmt(l.bruto)}`,
+        );
+        return;
+      }
+    }
+
     const detallesPayload = (data.detalles || []).map((d) => ({
       productoId: Number(d.productoId),
       cantidad: parseFloat(d.cantidad || 0),
-      descuento: parseFloat(d.descuento || 0),
+      descuento: parseFloat(d.descuento || 0) || 0,
     }));
-
-    const detalleInvalido = detallesPayload.find(
-      (d) =>
-        !d.productoId || d.productoId <= 0 || !d.cantidad || d.cantidad <= 0,
-    );
-    if (detalleInvalido) {
-      toast.error("Hay un producto sin cantidad válida");
-      return;
-    }
 
     const nombre =
       (data.nombreCliente || "").trim() ||
@@ -182,9 +215,10 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
       Number(control?.limiteDiaPago) > 0 ? Number(control.limiteDiaPago) : 30;
 
     const payload = {
-      clienteId: esClienteGenerico ? null : (clienteSel?.clienteId ?? null),
+      clienteId: clienteSel?.clienteId ?? null,
       nombreCliente: nombre,
-      tipo: esCredito,
+      tipo: esCredito, // false = contado, true = crédito
+      tipoComprobante: tipoComprobanteActual, // 'B01' | 'B02' | ...
       metodoPago: esCredito ? null : (METODO_PAGO_API[data.tipoPago] ?? 1),
       fechaVencimiento: esCredito
         ? data.fechaVencimiento || localDate(addDays(diasCredito))
@@ -226,7 +260,8 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
           </div>
 
           <form onSubmit={handleSubmit(submit)} className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Fila de configuración */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
                 <label className="label">Tipo de factura</label>
                 <select
@@ -242,13 +277,24 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
               </div>
 
               <div>
+                <label className="label">Comprobante (NCF)</label>
+                <select className="input" {...register("tipoComprobante")}>
+                  {TIPO_COMPROBANTE.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="label">Método de pago</label>
                 <select
                   className="input"
                   disabled={esCredito}
                   {...register("tipoPago")}
                 >
-                  {METODOS.map((m) => (
+                  {METODOS_PAGO.map((m) => (
                     <option key={m} value={m}>
                       {m}
                     </option>
@@ -256,7 +302,7 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                 </select>
               </div>
 
-              {esCredito ? (
+              {esCredito && (
                 <div>
                   <label className="label">Fecha de vencimiento</label>
                   <input
@@ -265,8 +311,6 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                     {...register("fechaVencimiento")}
                   />
                 </div>
-              ) : (
-                <div className="hidden sm:block" />
               )}
             </div>
 
@@ -278,6 +322,7 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                     type="checkbox"
                     checked={esClienteGenerico}
                     onChange={handleClienteGenericoChange}
+                    disabled={esCredito || requiereRNC}
                     className="w-4 h-4 rounded"
                   />
                   <span
@@ -285,13 +330,23 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                     style={{ color: "var(--text-primary)" }}
                   >
                     Cliente Genérico
+                    {requiereRNC && (
+                      <span className="text-xs ml-1 text-red-500">
+                        (no disponible para {tipoComprobanteActual})
+                      </span>
+                    )}
                   </span>
                 </label>
               </div>
 
-              {!esClienteGenerico ? (
+              {!esClienteGenerico || esCredito ? (
                 <div className="relative">
-                  <label className="label">Buscar Cliente</label>
+                  <label className="label">
+                    Buscar Cliente
+                    {requiereRNC && (
+                      <span className="text-red-500 ml-1">* RNC requerido</span>
+                    )}
+                  </label>
                   <div className="relative">
                     <Search
                       size={14}
@@ -379,7 +434,7 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                     </div>
                   )}
 
-                  {!clienteSel && (
+                  {!clienteSel && !esCredito && (
                     <div className="mt-2">
                       <label className="label">O escribe nombre</label>
                       <input
@@ -444,7 +499,9 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                                 color: "var(--text-muted)",
                               }}
                             >
-                              Stock: {p.cantidad}
+                              {p.servicios
+                                ? "Servicio"
+                                : `Stock: ${p.cantidad}`}
                             </span>
                             <span
                               className="text-xs px-2 py-0.5 rounded"
@@ -477,23 +534,17 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                     <tr>
                       <th>Producto</th>
                       <th className="w-24">Cant.</th>
-                      <th className="w-32">Precio</th>
-                      <th className="w-28">ITBIS</th>
+                      <th className="text-right w-28">Precio</th>
+                      <th className="w-28">Descuento</th>
+                      <th className="w-24">ITBIS</th>
                       <th className="text-right w-32">Subtotal</th>
                       <th className="w-10"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {fields.map((f, i) => {
-                      const cant = parseFloat(
-                        watch(`detalles.${i}.cantidad`) || 0,
-                      );
-                      const prec = parseFloat(
-                        watch(`detalles.${i}.precio`) || 0,
-                      );
-                      const base = cant * prec;
+                      const l = calcLinea(detalles[i] || f);
                       const itbisPct = Number(f.itbis) || 0;
-                      const sub = f.exento ? base : base * (1 + itbisPct / 100);
                       return (
                         <tr key={f.id}>
                           <td className="font-medium text-sm">
@@ -505,10 +556,13 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                               {...register(`detalles.${i}.cantidad`)}
                             />
                           </td>
+                          <td className="text-right text-sm tabular-nums">
+                            {fmt(l.precio)}
+                          </td>
                           <td>
                             <NumInput
                               className="input text-right py-1 px-2 text-sm"
-                              {...register(`detalles.${i}.precio`)}
+                              {...register(`detalles.${i}.descuento`)}
                             />
                           </td>
                           <td>
@@ -523,7 +577,7 @@ export function NuevaFacturaModal({ onClose, onSaveSuccess }) {
                             </span>
                           </td>
                           <td className="text-right font-semibold text-sm tabular-nums">
-                            {fmt(sub)}
+                            {fmt(l.subTotal + l.itbis)}
                           </td>
                           <td>
                             <button

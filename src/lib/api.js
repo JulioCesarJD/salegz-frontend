@@ -1,13 +1,11 @@
+// UBICACIÓN: src/lib/api.js
 import axios from 'axios'
 import toast from 'react-hot-toast'
 import { API_URL, API_TIMEOUT_MS } from '../config/env'
 import { normalizeApiError } from './apiErrors'
 import {
   getAccessToken,
-  getRefreshToken,
-  saveSession,
   clearSession,
-  SESSION_UPDATED_EVENT,
   SESSION_EXPIRED_EVENT,
   PERMISSIONS_CHANGED_EVENT,
 } from './tokenStorage'
@@ -15,104 +13,103 @@ import {
 const api = axios.create({
   baseURL: API_URL,
   timeout: API_TIMEOUT_MS,
+  withCredentials: true,
   headers: { 'Content-Type': 'application/json' },
 })
 
-// ── Request: token de acceso ───────────────────────────────────────────────
+const AUTH_URLS = [
+  '/api/auth/login',
+  '/api/auth/refresh',
+  '/api/auth/logout',
+]
+
+const isAuthUrl = (url = '') =>
+  AUTH_URLS.some((path) => url.includes(path))
+
+let expiredNotified = false
+
+// Limpia la sesión cuando el Access Token expira.
+function expireSession() {
+  clearSession()
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+  }
+
+  if (!expiredNotified) {
+    expiredNotified = true
+
+    toast.error('Tu sesión expiró. Inicia sesión nuevamente.', {
+      id: 'session-expired',
+    })
+  }
+}
+
+// ── Request: enviar Access Token ───────────────────────────────────────
+
 api.interceptors.request.use((config) => {
   const token = getAccessToken()
-  if (token) {
+
+  if (token && !isAuthUrl(config.url)) {
     config.headers = config.headers || {}
     config.headers.Authorization = `Bearer ${token}`
   }
+
   return config
 })
 
-// ── Refresh de sesión ──────────────────────────────────────────────────────
-const AUTH_URLS = ['/api/auth/login', '/api/auth/refresh', '/api/auth/logout']
-const isAuthUrl = (url = '') => AUTH_URLS.some((path) => url.includes(path))
+// ── Response: errores y expiración ────────────────────────────────────
 
-let refreshPromise = null
-let expiredNotified = false
-
-async function refreshSession() {
-  const refreshToken = getRefreshToken()
-  if (!refreshToken) throw new Error('No hay refresh token disponible')
-
-  // axios "puro" para no volver a entrar al interceptor.
-  const { data } = await axios.post(
-    `${API_URL}/api/auth/refresh`,
-    { refreshToken },
-    { headers: { 'Content-Type': 'application/json' }, timeout: API_TIMEOUT_MS }
-  )
-
-  saveSession(data)
-  window.dispatchEvent(new CustomEvent(SESSION_UPDATED_EVENT, { detail: data }))
-  return data.accessToken
-}
-
-function expireSession() {
-  clearSession()
-  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
-  if (!expiredNotified) {
-    expiredNotified = true
-    toast.error('Tu sesión expiró. Inicia sesión nuevamente.', { id: 'session-expired' })
-  }
-}
-
-if (typeof window !== 'undefined') {
-  window.addEventListener(SESSION_UPDATED_EVENT, () => {
-    expiredNotified = false
-  })
-}
-
-// ── Response: refresh automático y errores globales ────────────────────────
 api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
+  (response) => {
+    // Reinicia el aviso cuando un login es exitoso.
+    if (response.config?.url?.includes('/api/auth/login')) {
+      expiredNotified = false
+    }
+
+    return response
+  },
+
+  (error) => {
     const original = error.config || {}
     const status = error.response?.status
     const url = original.url || ''
 
-    // 401 → intentar refresh una sola vez y reintentar la petición original.
-    if (status === 401 && !original._retry && !isAuthUrl(url)) {
-      original._retry = true
-      try {
-        if (!refreshPromise) {
-          refreshPromise = refreshSession().finally(() => {
-            refreshPromise = null
-          })
-        }
-        const accessToken = await refreshPromise
-        original.headers = original.headers || {}
-        original.headers.Authorization = `Bearer ${accessToken}`
-        return api(original)
-      } catch {
-        expireSession()
-        return Promise.reject(normalizeApiError(error))
-      }
-    }
-
     const normalized = normalizeApiError(error)
 
-    // Login/refresh/logout ya muestran su propio mensaje en pantalla.
-    if (isAuthUrl(url)) return Promise.reject(normalized)
+    // Los errores de login/logout/refresh se manejan localmente.
+    if (isAuthUrl(url)) {
+      return Promise.reject(normalized)
+    }
 
-    // 403 → la sesión quedó desactualizada (p. ej. le revocaron un permiso).
-    // Se refresca el usuario y se avisa una sola vez.
+    // 401: Access Token inválido o expirado.
+    // No se intenta renovar el token.
+    if (status === 401) {
+      expireSession()
+
+      return Promise.reject(normalized)
+    }
+
+    // 403: usuario sin permiso para realizar la acción.
     if (status === 403) {
-      window.dispatchEvent(new Event(PERMISSIONS_CHANGED_EVENT))
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new Event(PERMISSIONS_CHANGED_EVENT)
+        )
+      }
+
       toast.error(
-        normalized.userMessage || 'No posees el permiso requerido para esta acción.',
+        normalized.userMessage ||
+          'No posees el permiso requerido para esta acción.',
         { id: 'api-403' }
       )
     } else if (status >= 500) {
-      toast.error('Error del servidor. Intenta nuevamente en unos segundos.', {
-        id: 'api-500',
-      })
+      toast.error(
+        'Error del servidor. Intenta nuevamente en unos segundos.',
+        { id: 'api-500' }
+      )
     }
 
-    // 404 se deja a la pantalla para que muestre su estado vacío/no encontrado.
     return Promise.reject(normalized)
   }
 )
